@@ -1,0 +1,15 @@
+FROM node:20 as buildapi
+
+RUN apt-get update
+RUN apt-get install -y curl
+
+ENV HOME /home
+
+WORKDIR $HOME/api
+
+COPY ./backend/package.json \
+  ./backend/package-lock.json \
+  ./backend/ServerConfigurations.ts \
+  ./backend/tsconfig.json ./
+
+RUN npm ci

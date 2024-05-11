@@ -1,0 +1,40 @@
+services:
+  sight_db_replica_0:
+    container_name: sight_db_replica_0
+    image: mongo:latest
+    volumes:
+      - ./db/rs-init.sh:/scripts/rs-init.sh
+    networks:
+      data_layer:
+    ports:
+      - '27018:27017'
+    restart: always
+    depends_on:
+      - sight_db_replica_1
+      - sight_db_replica_2
+    links:
+      - sight_db_replica_1
+      - sight_db_replica_2
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
+  sight_db_replica_1:
+    container_name: sight_db_replica_1
+    image: mongo:latest
+    networks:
+      data_layer:
+    ports:
+      - '27019:27017'
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
+  sight_db_replica_2:
+    container_name: sight_db_replica_2
+    image: mongo:latest
+    networks:
+      data_layer:
+    ports:
+      - '27020:27017'
+    restart: always
+    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
+
+networks:
+  data_layer:
+    driver: bridge
