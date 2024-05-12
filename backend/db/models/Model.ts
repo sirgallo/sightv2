@@ -1,30 +1,27 @@
 import { Schema, Document } from 'mongoose';
 
-
 export const SourceCollectionName = 'model';
+export const EntityCollectionName = 'entity';
+export const RelationshipCollectionName = 'relationship';
 
 export type ModelObjectType = 'entity' | 'relationship';
 export type RelationshipType = 'directed' | 'undirected';
 
+
 interface __undirectedRelationship {
-  members: { [entityId: string]: string };
+  members: string[]; // label field from entity
 }
 
 interface __directedRelationship {
-  sources: { [entityId: string]: string };
-  dests: { [entityId: string]: string };
-}
-
-interface __relationshipBase {
-  label: string;
-  v: number;
+  sources: string[]; // label field on entities providing
+  dests: string[]; // label field on entities receieving 
 }
 
 type __relationship<T extends RelationshipType> = 
   T extends 'directed'
-  ? __relationshipBase & __directedRelationship
+  ? __directedRelationship & { rType: T; }
   : T extends 'undirected'
-  ? __relationshipBase & __undirectedRelationship
+  ? __undirectedRelationship & { rType: T; }
   : never;
 
 type __propIdPriorityType = 'primary' | 'secondary' | 'n/a';
@@ -37,38 +34,81 @@ type __entityProps = {
   }
 };
 
-interface __entity<T extends RelationshipType> {
+interface __entity {
+  label: string;
   props: __entityProps;
-  relationships: { [oId: string]: __relationship<T> };
+  v: number;
 }
 
-export interface __modelObject<MDL extends ModelObjectType, REL extends RelationshipType> {
-  oId: string;
-  orgId: string;
+interface __object<MDL extends ModelObjectType, REL extends RelationshipType | unknown = unknown> {
+  objectId: string;
   modelId: string;
+  sourceId: string;
 
-  oType: MDL;
-  rType: REL;
+  label: string;
+  v: number;
+  metadata: (
+    MDL extends 'entity' 
+    ? __entity
+    : MDL extends 'relationship'
+    ? __relationship<REL extends RelationshipType ? REL : never>
+    : never
+  );
 
   createdAt?: Date; // injected
   updatedAt?: Date; // injected
 }
 
+export interface IEntity extends __object<'entity'> {}
+export interface IRelationship<REL extends RelationshipType> extends __object<'relationship', REL> {}
 
-export type IModel<MDL extends ModelObjectType, REL extends RelationshipType> = 
-  MDL extends 'entity' 
-  ? __modelObject<MDL, REL> & __entity<REL>
-  : MDL extends 'relationship'
-  ? __modelObject<MDL, REL> & __relationship<REL>
-  : never;
 
+export interface IModel {
+  modelId: string;
+  orgId: string;
+  aclId: string;
+
+  createdAt?: Date; // injected
+  updatedAt?: Date; // injected
+}
 //======================== mongo specific schemas
 
 
-export interface ModelDocument extends Document {}
+export interface EntityDocument extends IEntity, Document {}
+export interface RelationshipDocument extends IRelationship<RelationshipType>, Document {}
+export interface ModelDocument extends IModel, Document {}
+
+
+export const EntitySchema: Schema<EntityDocument> = new Schema({
+  objectId: { type: String, required: true, unique: true },
+  modelId: { type: String, required: true, unique: false },
+  sourceId: { type: String, required: true, unique: false },
+  label: { type: String, required: true, unique: true },
+  v: { type: Number, required: true, unique: false, default: 0 },
+  metadata: { type: Schema.Types.Mixed, required: true, unique: true }
+}, { 
+  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
+  collection: SourceCollectionName,
+  minimize: false
+});
+
+export const RelationshipSchema: Schema<RelationshipDocument> = new Schema({
+  objectId: { type: String, required: true, unique: true },
+  modelId: { type: String, required: true, unique: false },
+  sourceId: { type: String, required: true, unique: false },
+  label: { type: String, required: true, unique: true },
+  v: { type: Number, required: true, unique: false, default: 0 },
+  metadata: { type: Schema.Types.Mixed, required: true, unique: true }
+}, { 
+  timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
+  collection: SourceCollectionName,
+  minimize: false
+});
 
 export const ModelSchema: Schema<ModelDocument> = new Schema({
-  
+  modelId: { type: String, required: true, unique: true },
+  orgId: { type: String, required: true, unique: false },
+  aclId: { type: String, required: true, unique: false }
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
   collection: SourceCollectionName,
@@ -79,4 +119,16 @@ export const ModelSchema: Schema<ModelDocument> = new Schema({
 //======================== indexes
 
 
-ModelSchema.index({ sourceId: 1 });
+ModelSchema.index({ modelId: 1 });
+ModelSchema.index({ orgId: 1 });
+ModelSchema.index({ aclId: 1 });
+
+EntitySchema.index({ objectId: 1 });
+EntitySchema.index({ modelId: 1 });
+EntitySchema.index({ label: 1 });
+EntitySchema.index({ modelId: 1, label: 1, v: 1 });
+
+RelationshipSchema.index({ objectId: 1 });
+RelationshipSchema.index({ modelId: 1 });
+RelationshipSchema.index({ label: 1 });
+RelationshipSchema.index({ modelId1: 1, label: 1, v: 1 });

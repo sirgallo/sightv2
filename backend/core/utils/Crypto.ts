@@ -1,5 +1,5 @@
 import { compare, hash } from 'bcrypt';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 import { LogProvider } from '../log/LogProvider.js';
 import { NodeUtil } from './Node.js';
@@ -27,6 +27,21 @@ export class CryptoUtil {
   static verifyPassword = async (password: string, hash: string): Promise<boolean> =>{
     return await compare(password, hash);
   }
+
+  static generateSecureUUID = () => {
+    const bytes = randomBytes(16);
+
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
+    
+    const hex = bytes.toString('hex');
+    return [
+      hex.substring(0, 8),
+      hex.substring(8, 12),
+      hex.substring(12, 16),
+      hex.substring(16, 20),hex.substring(20, 32)
+    ].join('-');
+  };
 }
 
 

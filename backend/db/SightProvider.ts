@@ -1,7 +1,7 @@
 import { Document, Model, Schema } from 'mongoose';
 
 import { MongoProvider } from '../core/data/providers/MongoProvider.js';
-import { ModelDocument, ModelSchema } from './models/Model.js';
+import { EntityDocument, EntitySchema, ModelDocument, ModelSchema, RelationshipDocument, RelationshipSchema } from './models/Model.js';
 import { SearchDocument, SearchSchema } from './models/Search.js';
 import { SourceDocument, SourceSchema } from './models/Source.js';
 import { TokenDocument, TokenSchema, UserDocument, UserSchema } from './models/User.js';
@@ -10,6 +10,8 @@ import { DBMap } from './models/Configure.js';
 
 
 export class SightMongoProvider extends MongoProvider {
+  entity: Model<EntityDocument>;
+  relationship: Model<RelationshipDocument>;
   model: Model<ModelDocument>;
   search: Model<SearchDocument>;
   source: Model<SourceDocument>;
@@ -18,8 +20,10 @@ export class SightMongoProvider extends MongoProvider {
   taskHistory: Model<TaskHistoryDocument>;
   token: Model<TokenDocument>;
   user: Model<UserDocument>;
-  
+
   initModels() {
+    this.entity = this.modelValidator<EntityDocument>(dbConf.sight.collections.entity);
+    this.relationship = this.modelValidator<RelationshipDocument>(dbConf.sight.collections.relationship);
     this.model = this.modelValidator<ModelDocument>(dbConf.sight.collections.model);
     this.search = this.modelValidator<SearchDocument>(dbConf.sight.collections.search);
     this.source = this.modelValidator<SourceDocument>(dbConf.sight.collections.source);
@@ -36,6 +40,8 @@ export class SightMongoProvider extends MongoProvider {
   }
 
   private getSchemaForModel(model: keyof typeof dbConf.sight.collections): Schema {
+    if (model === 'entity') return EntitySchema;
+    if (model === 'relationship') return RelationshipSchema;
     if (model === 'model') return ModelSchema;
     if (model === 'search') return SearchSchema;
     if (model === 'source') return SourceSchema;
@@ -53,6 +59,8 @@ export const dbConf: DBMap<DBName> = {
   sight: {
     name: 'sight',
     collections: {
+      entity: 'entity',
+      relationship: 'relationship',
       model: 'model',
       search: 'search',
       source: 'source',

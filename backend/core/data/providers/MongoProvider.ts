@@ -11,9 +11,11 @@ export const applySession = (session?: ClientSession): { session: ClientSession 
 };
 
 export abstract class MongoProvider {
-  protected conn: Connection;
+  protected __conn: Connection;
   protected zLog = new LogProvider(MongoProvider.name);
   constructor() {}
+
+  get conn() { return this.__conn; }
 
   async createNewConnection(opts?: MongoInitOpts) {
     try {
@@ -25,7 +27,7 @@ export abstract class MongoProvider {
         ? opts.overrideOpts
         : { autoIndex: true, autoCreate: true, maxPoolSize: 100, useUnifiedTopology: true, useNewUrlParser: true };
       
-      this.conn = await createConnection(connectionString, connectionOpts).asPromise();
+      this.__conn = await createConnection(connectionString, connectionOpts).asPromise();
       this.initModels();
     } catch (err) {
       console.log('error:', err);

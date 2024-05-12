@@ -6,9 +6,10 @@ import { NodeUtil } from '../../core/utils/Node.js';
 import { ModelProvider } from '../providers/ModelProvider.js';
 import { modelRouteMapping } from '../configs/ModelRouteMapping.js';
 import { ModelEndpoints, ModelRequest } from '../types/Model.js';
+import { RelationshipType } from 'db/models/Model.js';
 
 
-export class ModelRoute<T extends keyof ModelEndpoints, V extends ModelRequest<T>> extends Route<T, V> {
+export class ModelRoute<T extends keyof ModelEndpoints, V extends ModelRequest<T, RelationshipType>> extends Route<T, V> {
   private zLog: LogProvider = new LogProvider(ModelRoute.name);
   constructor(basePath: string, routePath: string, private modelProvider: ModelProvider) {
     super({ basePath, routePath });
@@ -44,29 +45,49 @@ export class ModelRoute<T extends keyof ModelEndpoints, V extends ModelRequest<T
   async validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V> {
     try {
       if (opts.method === 'generate') {
-        const potential: ModelRequest<'generate'> = req.body;
+        const potential: ModelRequest<'generate', RelationshipType> = req.body;
+        
         if (RouteRequestValidators.isEmptObject(potential)) throw new Error('empty request');
-
+        if (RouteRequestValidators.isEmptObject(potential.model)) throw new Error('empty field');
+        if (RouteRequestValidators.isEmptyArray(potential.entities)) throw new Error('empty array');
+        if (RouteRequestValidators.isEmptyArray(potential.relationships)) throw new Error('empty array');
+        
         return potential as V;
       }
   
       if (opts.method === 'view') {
-        const potential: ModelRequest<'view'> = req.body;
+        const potential: ModelRequest<'view', RelationshipType> = req.body;
+
         if (RouteRequestValidators.isEmptObject(potential)) throw new Error('empty request');
+        if (RouteRequestValidators.isInvalidType('string', potential.modelId)) throw new Error('invalid args on request');
 
         return potential as V;
       }
   
       if (opts.method === 'update') {
-        const potential: ModelRequest<'update'> = req.body;
+        const potential: ModelRequest<'update', RelationshipType> = req.body;
+
         if (RouteRequestValidators.isEmptObject(potential)) throw new Error('empty request');
+        if (RouteRequestValidators.isEmptObject(potential.model)) throw new Error('empty field');
+        if (RouteRequestValidators.isEmptObject(potential.updatePayload)) throw new Error('empty field');
+
+        if (RouteRequestValidators.isEmptyArray(potential.updatePayload.add.entities)) throw new Error('empty array');
+        if (RouteRequestValidators.isEmptyArray(potential.updatePayload.add.relationships)) throw new Error('empty array');
+
+        if (RouteRequestValidators.isEmptyArray(potential.updatePayload.remove.entities)) throw new Error('empty array');
+        if (RouteRequestValidators.isEmptyArray(potential.updatePayload.remove.relationships)) throw new Error('empty array');
+
+        if (RouteRequestValidators.isEmptyArray(potential.updatePayload.update.entities)) throw new Error('empty array');
+        if (RouteRequestValidators.isEmptyArray(potential.updatePayload.update.relationships)) throw new Error('empty array');
 
         return potential as V;
       }
   
       if (opts.method === 'delete') {
-        const potential: ModelRequest<'delete'> = req.body;
+        const potential: ModelRequest<'delete', RelationshipType> = req.body;
+
         if (RouteRequestValidators.isEmptObject(potential)) throw new Error('empty request');
+        if (RouteRequestValidators.isInvalidType('string', potential.modelId)) throw new Error('empty request');
 
         return potential as V;
       }

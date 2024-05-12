@@ -45,6 +45,8 @@ db.createUser({
 
 
 db.createCollection('model', { capped: false });
+db.createCollection('entity', { capped: false });
+db.createCollection('relationship', { capped: false });
 db.createCollection('search', { capped: false });
 db.createCollection('source', { capped: false });
 db.createCollection('task', { capped: false });
