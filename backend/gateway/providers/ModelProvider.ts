@@ -17,17 +17,19 @@ export class ModelProvider implements ModelEndpoints {
   async generate<T extends RelationshipType>(opts: ModelRequest<'generate', T>): Promise<ModelResponse<'generate', T>> {
     try {
       let resp: ModelResponse<'generate', T>;
+
       const session = await this.sightDb.conn.startSession();
       session.startTransaction();
 
       const model = await this.insertModel(opts.model);
       if (model) {
-        const [ entities, relationships ] = await Promise.all([
+        const [ acl, entities, relationships ] = await Promise.all([ 
+          this.sightDb.acl.findOne({ modelId: model.modelId }),
           this.insertEntities(model, opts.entities),
           this.insertRelationships(model, opts.relationships)
         ]);
 
-        resp = { ...model, entities, relationships };
+        resp = { ...model, acl, entities, relationships };
       } else { throw new Error('error inserting model metadata into model collection'); }
       
       await session.commitTransaction();
@@ -58,18 +60,14 @@ export class ModelProvider implements ModelEndpoints {
       const removeHelper = async () => {
         const removed: { entities: number, relationships: number } = { entities: 0, relationships: 0 };
         if (opts.updatePayload.remove.entities?.length > 0) { 
-          const ack = await this.sightDb.entity.deleteMany({
-            objectId: { $in: opts.updatePayload.remove.entities.map(e => e.objectId) }
-          }) ;
-
+          const oIds = opts.updatePayload.remove.entities.map(e => e.objectId);
+          const ack = await this.sightDb.entity.deleteMany({ objectId: { $in: oIds } }) ;
           removed.entities = ack.deletedCount;
         }
 
         if (opts.updatePayload.remove.relationships?.length > 0) {
-          const ack = await this.sightDb.relationship.deleteMany({
-            objectId: { $in: opts.updatePayload.remove.relationships.map(e => e.objectId) }
-          });
-
+          const oIds = opts.updatePayload.remove.relationships.map(e => e.objectId);
+          const ack = await this.sightDb.relationship.deleteMany({ objectId: { $in: oIds } });
           removed.relationships = ack.deletedCount;
         }
 
@@ -79,15 +77,16 @@ export class ModelProvider implements ModelEndpoints {
       const addHelper = async () => {
         const added: { entities: IEntity[], relationships: IRelationship<T>[] } = { entities: [], relationships: [] };
         if (opts.updatePayload.add.entities?.length > 0) {
-          added.entities = await this.sightDb.entity.insertMany(opts.updatePayload.add.entities);
+          const insertObjs = opts.updatePayload.add.entities;
+          added.entities = await this.sightDb.entity.insertMany(insertObjs);
         }
 
         if (opts.updatePayload.add.relationships?.length > 0) {
-          await this.sightDb.relationship.insertMany(opts.updatePayload.add.relationships);
-          const inserted: IRelationship<T>[] = await this.sightDb.relationship.find({ 
-            label: { $in: opts.updatePayload.add.relationships.map(r => r.label) }
-          });
+          const relationships = opts.updatePayload.add.relationships;
+          await this.sightDb.relationship.insertMany(relationships);
 
+          const labels = opts.updatePayload.add.relationships.map(r => r.label);
+          const inserted: IRelationship<T>[] = await this.sightDb.relationship.find({ label: { $in: labels } });
           added.relationships = inserted;
         }
 
@@ -97,9 +96,10 @@ export class ModelProvider implements ModelEndpoints {
       const updateHelper = async () => {
         const updated: { entities: IEntity[], relationships: IRelationship<T>[] } = { entities: [], relationships: [] };
         for (const entity of opts.updatePayload.update.entities) {
+          const payload = { ...entity, v: this.incrementVersion(entity.v) };
           const updateEntity: IEntity = await this.sightDb.entity.findOneAndUpdate(
             { objectId: entity.objectId },
-            { $set: entity },
+            { $set: payload },
             { new: true }
           );
 
@@ -107,9 +107,10 @@ export class ModelProvider implements ModelEndpoints {
         }
 
         for (const relationship of opts.updatePayload.update.relationships) {
+          const payload = { ...relationship, v: this.incrementVersion(relationship.v) };
           const updatedRelationship: IRelationship<T> = await this.sightDb.relationship.findOneAndUpdate(
             { objectId: relationship.objectId },
-            { $set: relationship },
+            { $set: payload },
             { new: true }
           );
 
@@ -120,15 +121,16 @@ export class ModelProvider implements ModelEndpoints {
       };
 
       const model = await this.sightDb.model.findOne({ modelId: opts.model.modelId });
+      if (! model) throw new Error('model does not exist');
 
       await removeHelper();
       await addHelper();
       await updateHelper();
 
-      const view = await this.view({ modelId: model.modelId });
+      const [ acl, view ] = await Promise.all([ this.sightDb.acl.findOne({ modelId: model.modelId }), this.view({ modelId: model.modelId }) ]);
       await session.commitTransaction();
 
-      return { ...model, entities: view.entities, relationships: view.relationships as IRelationship<T>[] };
+      return { ...model, acl, entities: view.entities, relationships: view.relationships as IRelationship<T>[] };
     } catch (err) {
       this.zLog.error(`update error: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;
@@ -155,20 +157,13 @@ export class ModelProvider implements ModelEndpoints {
     }
   }
 
-  private async insertEntities<T extends RelationshipType>(
-    model: IModel, 
-    entities: ModelRequest<'generate', T>['entities']
-  ): Promise<IEntity[]> {
-    const validatedEntries = entities.map(e => { 
-      return { modelId: model.modelId, objectId: CryptoUtil.generateSecureUUID(), v: 0, ...e };
-    });
-
-    const inserted: IEntity[] = await this.sightDb.entity.insertMany(validatedEntries);
-    return inserted;
+  private async insertEntities<T extends RelationshipType>(model: IModel, entities: ModelRequest<'generate', T>['entities']): Promise<IEntity[]> {
+    const validatedEntries = entities.map(e => ({ modelId: model.modelId, objectId: CryptoUtil.generateSecureUUID(), v: 0, ...e }));
+    return this.sightDb.entity.insertMany(validatedEntries);
   }
 
   private async insertRelationships<T extends RelationshipType>(
-    model: IModel, 
+    model: IModel,
     relationships: ModelRequest<'generate', T>['relationships']
   ): Promise<IRelationship<T>[]> {
     const validatedEntries: IRelationship<T>[] = relationships.map(r => {
@@ -183,30 +178,67 @@ export class ModelProvider implements ModelEndpoints {
     const validatedModel: IModel = { modelId: CryptoUtil.generateSecureUUID(), ...opts };
     return first(await this.sightDb.model.insertMany([ validatedModel ]));
   }
+
+  private incrementVersion = (v: number): number => v++;
 }
 
 
 class ModelAggregateGenerator {
   static aggregate = <T extends RelationshipType>(opts: ModelRequest<'view', T>): PipelineStage[] => {
-    const modelFilter: FilterQuery<IModel> = { modelId: opts.modelId };
     return [
-      { $match: modelFilter },
-      {
-        $lookup: {
-          from: 'entities',
-          localField: 'modelId',
-          foreignField: 'modelId',
-          as: 'entities'
-        }
-      },
-      {
-        $lookup: {
-          from: 'relationships',
-          localField: 'modelId',
-          foreignField: 'modelId',
-          as: 'relationships'
-        }
-      }
+      ModelAggregateGenerator.modelFilter(opts),
+      ModelAggregateGenerator.entityLookup(),
+      ModelAggregateGenerator.relationshipLookup(),
+      ModelAggregateGenerator.aclLookup(),
+      { $unwind: { path: 'acl', preserveNullAndEmptyArrays: true } },
+      ModelAggregateGenerator.modelProjection()
     ]
+  };
+
+  private static modelFilter = <T extends RelationshipType>(opts: ModelRequest<'view', T>): PipelineStage.Match => {
+    const filterQuery: FilterQuery<IModel> = { modelId: opts.modelId };
+    return { $match: filterQuery };
   }
+
+  private static entityLookup = (): PipelineStage.Lookup => {
+    return {
+      $lookup: {
+        from: 'entities',
+        localField: 'modelId',
+        foreignField: 'modelId',
+        as: 'entities'
+      }
+    };
+  };
+
+  private static relationshipLookup = (): PipelineStage.Lookup => {
+    return {
+      $lookup: {
+        from: 'relationships',
+        localField: 'modelId',
+        foreignField: 'modelId',
+        as: 'relationships'
+      }
+    }
+  };
+
+  private static aclLookup = (): PipelineStage.Lookup => {
+    return {
+      $lookup: {
+        from: 'acl',
+        localField: 'aclId',
+        foreignField: 'aclId',
+        as: 'acl'
+      }
+    }
+  };
+
+  private static modelProjection = (): PipelineStage.Project => {
+    return {
+      $project: {
+        _id: 0, modelId: 1, orgId: 1, createdAt: 1, updatedAt: 1, 
+        acl: 1, entities: 1, relationships: 1
+      }
+    }
+  };
 }

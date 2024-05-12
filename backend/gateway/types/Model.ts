@@ -1,3 +1,4 @@
+import { IACL } from '../../db/models/ACL.js';
 import { IEntity, IModel, IRelationship, RelationshipType } from '../../db/models/Model.js';
 
 
@@ -15,8 +16,8 @@ interface ModelUpdateRequest<T extends RelationshipType> {
       relationships: Pick<IRelationship<T>, 'objectId'>[];
     };
     update: {
-      entities: Partial<Pick<IEntity, 'objectId' | 'label' | 'metadata' | 'sourceId'>>[];
-      relationships: Partial<Pick<IRelationship<T>, 'objectId' | 'label' | 'metadata' | 'sourceId'>>[];
+      entities: Partial<Pick<IEntity, 'objectId' | 'label' | 'metadata' | 'sourceId' | 'v'>>[];
+      relationships: Partial<Pick<IRelationship<T>, 'objectId' | 'label' | 'metadata' | 'sourceId' | 'v'>>[];
     };
     add: {
       entities: Pick<IEntity, 'label' | 'metadata' | 'sourceId'>[];
@@ -39,6 +40,7 @@ export type ModelRequest<END extends keyof ModelEndpoints, REL extends Relations
 interface ModelDataResponse<T extends RelationshipType> extends IModel {
   entities: IEntity[];
   relationships: IRelationship<T>[];
+  acl: IACL;
 }
 
 interface ModelDeleteResponse {

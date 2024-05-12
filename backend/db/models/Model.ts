@@ -1,6 +1,6 @@
 import { Schema, Document } from 'mongoose';
 
-export const SourceCollectionName = 'model';
+export const ModelCollectionName = 'model';
 export const EntityCollectionName = 'entity';
 export const RelationshipCollectionName = 'relationship';
 
@@ -88,7 +88,7 @@ export const EntitySchema: Schema<EntityDocument> = new Schema({
   metadata: { type: Schema.Types.Mixed, required: true, unique: true }
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
-  collection: SourceCollectionName,
+  collection: EntityCollectionName,
   minimize: false
 });
 
@@ -101,7 +101,7 @@ export const RelationshipSchema: Schema<RelationshipDocument> = new Schema({
   metadata: { type: Schema.Types.Mixed, required: true, unique: true }
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
-  collection: SourceCollectionName,
+  collection: RelationshipCollectionName,
   minimize: false
 });
 
@@ -111,7 +111,7 @@ export const ModelSchema: Schema<ModelDocument> = new Schema({
   aclId: { type: String, required: true, unique: false }
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
-  collection: SourceCollectionName,
+  collection: ModelCollectionName,
   minimize: false
 });
 

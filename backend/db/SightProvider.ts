@@ -1,6 +1,7 @@
 import { Document, Model, Schema } from 'mongoose';
 
 import { MongoProvider } from '../core/data/providers/MongoProvider.js';
+import { ACLDocument, ACLSchema } from './models/ACL.js';
 import { EntityDocument, EntitySchema, ModelDocument, ModelSchema, RelationshipDocument, RelationshipSchema } from './models/Model.js';
 import { SearchDocument, SearchSchema } from './models/Search.js';
 import { SourceDocument, SourceSchema } from './models/Source.js';
@@ -10,6 +11,7 @@ import { DBMap } from './models/Configure.js';
 
 
 export class SightMongoProvider extends MongoProvider {
+  acl: Model<ACLDocument>;
   entity: Model<EntityDocument>;
   relationship: Model<RelationshipDocument>;
   model: Model<ModelDocument>;
@@ -22,6 +24,7 @@ export class SightMongoProvider extends MongoProvider {
   user: Model<UserDocument>;
 
   initModels() {
+    this.acl = this.modelValidator<ACLDocument>(dbConf.sight.collections.acl);
     this.entity = this.modelValidator<EntityDocument>(dbConf.sight.collections.entity);
     this.relationship = this.modelValidator<RelationshipDocument>(dbConf.sight.collections.relationship);
     this.model = this.modelValidator<ModelDocument>(dbConf.sight.collections.model);
@@ -40,6 +43,7 @@ export class SightMongoProvider extends MongoProvider {
   }
 
   private getSchemaForModel(model: keyof typeof dbConf.sight.collections): Schema {
+    if (model === 'acl') return ACLSchema;
     if (model === 'entity') return EntitySchema;
     if (model === 'relationship') return RelationshipSchema;
     if (model === 'model') return ModelSchema;
@@ -59,6 +63,7 @@ export const dbConf: DBMap<DBName> = {
   sight: {
     name: 'sight',
     collections: {
+      acl: 'acl',
       entity: 'entity',
       relationship: 'relationship',
       model: 'model',
