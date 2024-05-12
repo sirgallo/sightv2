@@ -32,7 +32,7 @@ x-variables:
       - SIGHT_DB_HOSTS=${SIGHT_DB_HOSTS}
       - SIGHT_DB_USER=${SIGHT_DB_USER}
       - SIGHT_DB_PASS=${SIGHT_DB_PASS}
-      - ETCDHOSTS=sight_etcd_0:2379,sight_etcd_1:2379,sight_etcd_2:2379
+      - SIGHT_ETCD_HOSTS=${SIGHT_ETCD_HOSTS}
       - NODE_ENV=docker
       - NODE_OPTIONS="--max-old-space-size=4096"
     networks:
@@ -42,7 +42,6 @@ x-variables:
     depends_on:
       - sight_redis
     
-
   common_gateway_settings: &common_gateway_settings
     <<: *common_api_settings
     image: 'sight_gateway_img'
@@ -52,7 +51,7 @@ x-variables:
     ports:
       - '1234'
     healthcheck:
-      test: curl --fail http://localhost:1234/poll || kill 1
+      test: curl --fail http://localhost:1234/gateway/poll || kill 1
       interval: 30s
       timeout: 10s
       retries: 3
@@ -61,6 +60,7 @@ services:
   sight_proxy: 
     image: sight_proxy_img
     hostname: ${HOSTNAME}
+    container_name: sight_proxy
     build:
       context: .
       dockerfile: ./lb/Dockerfile
@@ -81,7 +81,7 @@ services:
       context: .
       dockerfile: ./redis/Dockerfile
     ports:
-      - '6379:6379'
+      - '6379'
     volumes:
       - $HOME/sight/redis/data:/data  # Bind mount a volume from host ./data/redis to container /data
     networks:
@@ -95,66 +95,66 @@ services:
   sight_gateway_2:
     <<: *common_gateway_settings
     container_name: sight_gateway_2
-  sight_etcd_0:
-    <<: *common_etcd_settings
-    hostname: sight_etcd_0
-    container_name: sight_etcd_0
-    command:
-      - '--name=sight_etcd_0'
-      - '--advertise-client-urls=http://sight_etcd_0:2379'
-      - '--initial-advertise-peer-urls=http://sight_etcd_0:2380'
-      - *election_timeout
-      - *heartbeat_interval
-      - *initial_cluster
-      - *initial_cluster_state
-      - *initial_cluster_token
-      - *listen_client_urls
-      - *listen_peer_urls
-      #- *auto-tls
-      #- *peer-auto-tls
-    volumes:
-    # - $HOME/sight/certs/etcd/etcd0/server.crt:/etc/ssl/certs/ca-certificates.crt
-      - $HOME/sight/sight_etcd_0:/etcd-data
-  sight_etcd_1:
-    <<: *common_etcd_settings
-    hostname: sight_etcd_1
-    container_name: sight_etcd_1
-    command:
-      - '--name=sight_etcd_1'
-      - '--advertise-client-urls=http://sight_etcd_1:2379'
-      - '--initial-advertise-peer-urls=http://sight_etcd_1:2380'
-      - *election_timeout
-      - *heartbeat_interval
-      - *initial_cluster
-      - *initial_cluster_state
-      - *initial_cluster_token
-      - *listen_client_urls
-      - *listen_peer_urls
-      #- *auto-tls
-      #- *peer-auto-tls
-    volumes:
-      # - $HOME/sight/certs/etcd/etcd1/etcd1.crt:/etc/ssl/certs/ca-certificates.crt
-      - $HOME/sight/sight_etcd_1:/etcd-data
-  sight_etcd_2:
-    <<: *common_etcd_settings
-    hostname: sight_etcd_2
-    container_name: sight_etcd_2
-    command:
-      - '--name=sight_etcd_2'
-      - '--advertise-client-urls=http://sight_etcd_2:2379'
-      - '--initial-advertise-peer-urls=http://sight_etcd_2:2380'
-      - *election_timeout
-      - *heartbeat_interval
-      - *initial_cluster
-      - *initial_cluster_state
-      - *initial_cluster_token
-      - *listen_client_urls
-      - *listen_peer_urls
-      #- *auto-tls
-      #- *peer-auto-tls
-    volumes:
-      # - $HOME/sight/certs/etcd/etcd2/etcd2.crt:/etc/ssl/certs/ca-certificates.crt
-      - $HOME/sight/sight_etcd_2:/etcd-data
+  #sight_etcd_0:
+  #  <<: *common_etcd_settings
+  #  hostname: sight_etcd_0
+  #  container_name: sight_etcd_0
+  #  command:
+  #    - '--name=sight_etcd_0'
+  #    - '--advertise-client-urls=http://sight_etcd_0:2379'
+  #    - '--initial-advertise-peer-urls=http://sight_etcd_0:2380'
+  #    - *election_timeout
+  #    - *heartbeat_interval
+  #    - *initial_cluster
+  #    - *initial_cluster_state
+  #    - *initial_cluster_token
+  #    - *listen_client_urls
+  #    - *listen_peer_urls
+  #    #- *auto-tls
+  #    #- *peer-auto-tls
+  #  volumes:
+  #  # - $HOME/sight/certs/etcd/etcd0/server.crt:/etc/ssl/certs/ca-certificates.crt
+  #    - $HOME/sight/sight_etcd_0:/etcd-data
+  #sight_etcd_1:
+  #  <<: *common_etcd_settings
+  #  hostname: sight_etcd_1
+  #  container_name: sight_etcd_1
+  #  command:
+  #    - '--name=sight_etcd_1'
+  #    - '--advertise-client-urls=http://sight_etcd_1:2379'
+  #    - '--initial-advertise-peer-urls=http://sight_etcd_1:2380'
+  #    - *election_timeout
+  #    - *heartbeat_interval
+  #    - *initial_cluster
+  #    - *initial_cluster_state
+  #    - *initial_cluster_token
+  #    - *listen_client_urls
+  #    - *listen_peer_urls
+  #    #- *auto-tls
+  #    #- *peer-auto-tls
+  #  volumes:
+  #    # - $HOME/sight/certs/etcd/etcd1/etcd1.crt:/etc/ssl/certs/ca-certificates.crt
+  #    - $HOME/sight/sight_etcd_1:/etcd-data
+  #sight_etcd_2:
+  #  <<: *common_etcd_settings
+  #  hostname: sight_etcd_2
+  #  container_name: sight_etcd_2
+  #  command:
+  #    - '--name=sight_etcd_2'
+  #    - '--advertise-client-urls=http://sight_etcd_2:2379'
+  #    - '--initial-advertise-peer-urls=http://sight_etcd_2:2380'
+  #    - *election_timeout
+  #    - *heartbeat_interval
+  #    - *initial_cluster
+  #    - *initial_cluster_state
+  #    - *initial_cluster_token
+  #    - *listen_client_urls
+  #    - *listen_peer_urls
+  #    #- *auto-tls
+  #    #- *peer-auto-tls
+  #  volumes:
+  #    # - $HOME/sight/certs/etcd/etcd2/etcd2.crt:/etc/ssl/certs/ca-certificates.crt
+  #    - $HOME/sight/sight_etcd_2:/etcd-data
 
 networks:
   api_layer:

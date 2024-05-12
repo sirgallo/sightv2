@@ -37,7 +37,7 @@ export abstract class Server<T extends string> {
   protected staticFilesDir: string = 'public';
 
   protected numOfCpus: number = cpus().length;
-  protected _routes: Route<string, unknown>[] = [ new PollRoute(routeMappings.poll.name) ];
+  protected _routes: Route<string, unknown>[];
   protected zLog: LogProvider;
 
   constructor(opts: ServerConfiguration<T>) {
@@ -48,6 +48,8 @@ export abstract class Server<T extends string> {
     this.version = opts.version;
     this.numOfCpus = opts.numOfCpus;
     this.root = opts.root;
+
+    this._routes = [ new PollRoute(opts.root, routeMappings.poll.name) ];
     if (opts?.staticFilesDir) this.staticFilesDir = opts.staticFilesDir;
   }
 
@@ -62,7 +64,7 @@ export abstract class Server<T extends string> {
       this.run();
       this.startEventListeners();
     } catch(err) {
-      this.zLog.error(`error message: ${err.message}`);
+      this.zLog.error(`error message: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;
     }
   }

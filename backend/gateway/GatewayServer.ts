@@ -1,9 +1,7 @@
 import { ApplicableSystems } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
-import { ETCDProvider } from '../core/replication/EtcdProvider.js';
 import { SightMongoProvider } from '../db/SightProvider.js';
-import { dbConf } from '../db/DbConf.js';
 
 import { AccountProvider } from './providers/AccountProvider.js';
 import { AuthProvider } from './providers/AuthProvider.js';
@@ -31,44 +29,30 @@ export class GatewayServer extends Server<ApplicableSystems> {
 
   async initService(): Promise<boolean> {
     this.zLog.info(`${this.name} starting...`);
+
+    const sightDb = new SightMongoProvider();
+    await sightDb.createNewConnection();
+
+    this.zLog.info('connection to sightdb success');
+    
+    const accountProvider = new AccountProvider(sightDb);
+    const authProvider = new AuthProvider(sightDb);
+    const modelProvider = new ModelProvider(sightDb);
+    const savedProvider = new SavedProvider(sightDb);
+    const sourceProvider = new SourceProvider(sightDb);
+
+    this.zLog.info('all providers initialized');
+
+    this.routes = [ 
+      new AccountRoute(this.root, accountRouteMapping.account.name, accountProvider),
+      new AuthRoute(this.root, authRouteMapping.auth.name, authProvider),
+      new ModelRoute(this.root, modelRouteMapping.model.name, modelProvider),
+      new SavedRoute(this.root, savedRouteMapping.saved.name, savedProvider),
+      new SourceRoute(this.root, sourceRouteMapping.source.name, sourceProvider)
+    ];
+
     return true;
   }
 
-  async startEventListeners(): Promise<void> {
-    const etcdProvider = new ETCDProvider();
-
-    try {
-      etcdProvider.startElection(this.name);
-      etcdProvider.onElection('elected', async elected => {
-        try {
-          if (elected) { 
-            this.zLog.debug('elected leader');
-            
-            const sightDb = new SightMongoProvider();
-            await sightDb.createNewConnection();
-            
-            const accountProvider = new AccountProvider(sightDb);
-            const authProvider = new AuthProvider(sightDb);
-            const modelProvider = new ModelProvider(sightDb);
-            const savedProvider = new SavedProvider(sightDb);
-            const sourceProvider = new SourceProvider(sightDb);
-
-            this.routes = [ 
-              new AccountRoute(this.root, accountRouteMapping.account.name, accountProvider),
-              new AuthRoute(this.root, authRouteMapping.auth.name, authProvider),
-              new ModelRoute(this.root, modelRouteMapping.model.name, modelProvider),
-              new SavedRoute(this.root, savedRouteMapping.saved.name, savedProvider),
-              new SourceRoute(this.root, sourceRouteMapping.source.name, sourceProvider)
-            ];
-          }
-        } catch (err) {
-          this.zLog.error(err);
-          process.exit(1);
-        }
-      });
-    } catch (err) {
-      this.zLog.error(err);
-      throw err;
-    }
-  };
+  startEventListeners = () => null;
 }

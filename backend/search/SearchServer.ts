@@ -2,8 +2,6 @@ import { ApplicableSystems } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
 import { SightMongoProvider } from '../db/SightProvider.js';
-import { dbConf } from '../db/DbConf.js';
-
 import { SearchProvider } from './providers/SearchProvider.js';
 import { SearchRoute } from './routes/SearchRoute.js';
 import { searchRouteMapping } from './configs/SearchRouteMapping.js';

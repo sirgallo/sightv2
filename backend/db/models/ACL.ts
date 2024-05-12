@@ -10,7 +10,7 @@ type Admin = 'ADMIN';
 const permissionedUserList = <const>[ // full access, can update permissions on models and on users
   'ARCHITECT',  // can create models and data sources. writes to models that they have permissions on (creating a model gives write permission)
   'ANALYST' // read only access to models and data sources
-]
+];
 export type PermissionedUser = typeof permissionedUserList[number];
 
 export type UserLevel = Admin | PermissionedUser;

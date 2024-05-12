@@ -15,19 +15,19 @@ export class AuthRoute<T extends keyof AuthEndpoints, V extends AuthRequest<T>> 
     super({ basePath, routePath });
     
     this.subPaths = [
-      { path: authRouteMapping.auth.subPaths.authenticate.path, authenticate: false, handler: this.authenticate.bind(this) },
-      { path: authRouteMapping.auth.subPaths.register.path, authenticate: true, handler: this.register.bind(this) }
+      { path: authRouteMapping.auth.subPaths.authenticate.path, authenticate: false, handler: this.authenticate },
+      { path: authRouteMapping.auth.subPaths.register.path, authenticate: true, handler: this.register }
     ];
   }
 
   private async authenticate(req: Request, res: Response, next: NextFunction) {
     const method = authRouteMapping.auth.subPaths.authenticate.name as T;
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   private async register(req: Request, res: Response, next: NextFunction) {
     const method = authRouteMapping.auth.subPaths.register.name as T;
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   async validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V> {
@@ -63,6 +63,7 @@ export class AuthRoute<T extends keyof AuthEndpoints, V extends AuthRequest<T>> 
       if (! resp) throw new Error('no resp body returned');
       
       res.status(200).send({ status: 'success', resp });
+      return true;
     } catch (err) {
       this.zLog.error(`Error on ${AuthRoute.name} => ${err as Error}`);
       res.status(404).send({ err: NodeUtil.extractErrorMessage(err as Error) });

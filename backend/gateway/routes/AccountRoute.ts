@@ -14,25 +14,25 @@ export class AccountRoute<T extends keyof AccountEndpoints, V extends AccountReq
     super({ basePath, routePath  });
 
     this.subPaths = [
-      { path: accountRouteMapping.account.subPaths.details.path, authenticate: true, handler: this.details.bind(this) },
-      { path: accountRouteMapping.account.subPaths.update.path, authenticate: true, handler: this.update.bind(this) },
-      { path: accountRouteMapping.account.subPaths.delete.path, authenticate: true, handler: this.delete.bind(this) },
+      { path: accountRouteMapping.account.subPaths.details.path, authenticate: true, handler: this.details },
+      { path: accountRouteMapping.account.subPaths.update.path, authenticate: true, handler: this.update },
+      { path: accountRouteMapping.account.subPaths.delete.path, authenticate: true, handler: this.delete },
     ];
   }
 
   private async details(req: Request, res: Response, next: NextFunction) {
     const method = accountRouteMapping.account.subPaths.details.name as T
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   private async update(req: Request, res: Response, next: NextFunction) {
     const method = accountRouteMapping.account.subPaths.update.name as T
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   private async delete(req: Request, res: Response, next: NextFunction) {
     const method = accountRouteMapping.account.subPaths.delete.name as T
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   async validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V> {
@@ -73,10 +73,14 @@ export class AccountRoute<T extends keyof AccountEndpoints, V extends AccountReq
   async executeRequest(opts: RouteReqOpts<T>, args: V, res: Response, _next: NextFunction) {
     try {
       const resp = await this.accountProvider[opts.method](args as any);
+      if (! resp) throw new Error('no resp body returned');
+      
       res.status(200).send({ status: 'success', resp });
+      return true;
     } catch (err) {
       this.zLog.error(`Error on ${AccountRoute.name} => ${err as Error}`);
       res.status(404).send({ err: NodeUtil.extractErrorMessage(err as Error) });
+      return false;
     }
   }
 }

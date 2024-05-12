@@ -41,9 +41,7 @@ export abstract class Route<T extends string, V> {
       
       const validatedArgs = await this.validateRequest(opts, req);
       if (! validatedArgs) throw new Error('invalid request arguments passed from client')
-      await this.executeRequest(opts, validatedArgs, res, next);
-
-      return true;
+      return this.executeRequest(opts, validatedArgs, res, next);
     } catch (err) {
       res.status(404).send({ err: 'exception while processing route request' });
       return false;
@@ -51,7 +49,7 @@ export abstract class Route<T extends string, V> {
   }
 
   abstract validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V>;
-  abstract executeRequest(opts: RouteReqOpts<T>, args: Awaited<ReturnType<typeof this.validateRequest>>, res: Response, next: NextFunction): Promise<void>;
+  abstract executeRequest(opts: RouteReqOpts<T>, args: Awaited<ReturnType<typeof this.validateRequest>>, res: Response, next: NextFunction): Promise<boolean>;
 
   private __register( subPaths: RoutePathOpts[]) {
     for (const { path, authenticate, handler } of subPaths) {
@@ -72,14 +70,14 @@ export class RouteRequestValidators {
     return arg?.length === 0;
   };
 
-  static isInvalidType = (type: ValidField, arg?: any): boolean => { 
+  static isInvalidType = <T>(type: ValidField, arg?: T): boolean => { 
     const isNull = RouteRequestValidators.isNullOrUndefined(arg);
     if (isNull) return true;
 
     return typeof arg !== type;
   };
 
-  static isEmptObject = (arg?: any) => {
+  static isEmptObject = <T>(arg?: T) => {
     const isNull = RouteRequestValidators.isNullOrUndefined(arg);
     if (isNull) return true;
 
@@ -116,5 +114,5 @@ export interface RouteOpts {
 export interface RoutePathOpts {
   path: string,
   authenticate: boolean;
-  handler: (req: Request, res: Response, next: NextFunction) => Promise<void>
+  handler: (req: Request, res: Response, next: NextFunction) => Promise<boolean>
 }

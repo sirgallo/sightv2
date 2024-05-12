@@ -1,31 +1,69 @@
 #!/bin/bash
 
-readonly truthyInput="input should be yes or no"
+echo "build or restart services?: (build or restart)"
+read action
 
-echo "Init services for first time? (yes or no):"
-read startServices
-
-if [ "$startServices" == "yes" ]
+if [ "$action" == "build" ]
 then
-  echo "starting services for the first time"
-  
   export HOSTNAME
 
-  docker compose -f docker-compose.mongo.yml up --build -d
-  docker exec -it sight_db_replica_0 /scripts/rs-init.sh
-  sleep 20
+  echo "build database?: (yes or no)"
+  read database
 
-  docker-compose -f docker-compose.sight.yml up --build
-elif [ "$startServices" == "no" ]
-then
-  echo "restarting services..."
-  
+  if [ "$database" == "yes" ]
+  then
+    docker compose -f docker-compose.mongo.yml up --build -d
+    docker exec -it sight_db_replica_0 /scripts/rs-init.sh
+    sleep 20
+  elif [ "$database" == "no" ]
+  then
+    echo "database not selected for build"
+  else
+    echo "invalid input for database"
+  fi
+
+  echo "build services?: (yes or no)"
+  read services
+
+  if [ "$services" == "yes" ]
+  then
+    docker compose -f docker-compose.sight.yml up --build
+  elif [ "$services" == "no" ]
+  then
+    echo "services not selected for build"
+  else
+    echo "invalid input for services"
+  fi
+elif [ "$action" == "restart" ]
+then  
   export HOSTNAME
 
-  docker compose -f docker-compose.mongo.yml start
-  sleep 20
+  echo "restart database?: (yes or no)"
+  read database
 
-  docker compose -f docker-compose.sight.yml up
+  if [ "$database" == "yes" ]
+  then
+    docker compose -f docker-compose.mongo.yml start
+    sleep 10
+  elif [ "$database" == "no" ]
+  then
+    echo "database not selected for restart"
+  else
+    echo "invalid input for database"
+  fi
+
+  echo "restart services?: (yes or no)"
+  read services
+
+  if [ "$services" == "yes" ]
+  then
+    docker compose -f docker-compose.sight.yml start
+  elif [ "$services" == "no" ]
+  then
+    echo "services not selected for restart"
+  else
+    echo "invalid input for services"
+  fi
 else
-  echo truthyInput
+  echo "input should be build or restart"
 fi

@@ -14,7 +14,7 @@ export class SearchRoute<T extends keyof SearchEndpoints, V extends SearchReques
     super({ basePath, routePath });
 
     this.subPaths = [
-      { path: searchRouteMapping.query.subPaths.process.path, authenticate: true, handler: this.process.bind(this) }
+      { path: searchRouteMapping.query.subPaths.process.path, authenticate: true, handler: this.process }
     ]
 
     this.router.post(searchRouteMapping.query.subPaths.process.path, this.process.bind(this));
@@ -22,7 +22,7 @@ export class SearchRoute<T extends keyof SearchEndpoints, V extends SearchReques
 
   private async process(req: Request, res: Response, next: NextFunction) {
     const method = searchRouteMapping.query.subPaths.process.name as T;
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   async validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V> {
@@ -41,10 +41,14 @@ export class SearchRoute<T extends keyof SearchEndpoints, V extends SearchReques
   async executeRequest(opts: RouteReqOpts<T>, args: V, res: Response, next: NextFunction) {
     try {
       const resp = await this.searchProvider[opts.method](args as any);
+      if (! resp) throw new Error('no resp body returned');
+      
       res.status(200).send({ status: 'success', resp });
+      return true;
     } catch (err) {
       this.zLog.error(`Error on ${SearchRoute.name} => ${err as Error}`);
       res.status(404).send({ err: NodeUtil.extractErrorMessage(err as Error) });
+      return false;
     }
   }
 }

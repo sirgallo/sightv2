@@ -34,7 +34,7 @@ use sight
 
 db.createUser({
   user: 'sight_dev_user',
-  pwd: 'sight_dev_pass_1234?',
+  pwd: 'sight_dev_pass_1234',
   roles: [
     {
       role: 'readWrite',

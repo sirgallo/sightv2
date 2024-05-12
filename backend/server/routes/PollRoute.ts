@@ -12,20 +12,16 @@ import { routeMappings } from '../configs/RouteMappings.js';
 */
 export class PollRoute<T extends 'poll', V extends boolean> extends Route<T, V> {
   private log: LogProvider = new LogProvider(PollRoute.name);
-  constructor(routePath: string) {
-    super({ routePath });
-    this.router.get(routeMappings.poll.subPaths.root.name, this.poll.bind(this));
+  constructor(basePath: string, routePath: string) {
+    super({ basePath, routePath });
+    this.router.get(routeMappings.poll.subPaths.root.path, this.poll.bind(this));
   }
 
-  private poll(_req: Request, _res: Response, _next: NextFunction) {
-    this.log.info('validated health check');
-    _res.status(200).send({ alive: 'okay' });
+  private poll(req: Request, res: Response, next: NextFunction) {
+    this.log.info('health check reached');
+    res.status(200).send({ alive: 'okay' });
   }
 
-  validateRequest = async (_opts: RouteReqOpts<T>, _req: Request): Promise<V> => {
-    const validated = true;
-    return validated as V;
-  };
-
-  executeRequest = async (_opts: RouteReqOpts<T>, args: V, _res: Response, _next: NextFunction) => null;
+  validateRequest = async (_opts: RouteReqOpts<T>, _req: Request): Promise<V> => { return true as V; }
+  executeRequest = async (_opts: RouteReqOpts<T>, _args: V, res: Response, _next: NextFunction) => { return true; }
 }

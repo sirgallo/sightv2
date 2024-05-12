@@ -14,25 +14,25 @@ export class SavedRoute<T extends keyof SavedEndpoints, V extends SavedRequest<T
     super({ basePath, routePath });
     
     this.subPaths = [
-      { path: savedRouteMapping.saved.subPaths.create.path, authenticate: true, handler: this.create.bind(this) },
-      { path: savedRouteMapping.saved.subPaths.update.path, authenticate: true, handler: this.update.bind(this) },
-      { path: savedRouteMapping.saved.subPaths.delete.path, authenticate: true, handler: this.delete.bind(this) },
+      { path: savedRouteMapping.saved.subPaths.create.path, authenticate: true, handler: this.create },
+      { path: savedRouteMapping.saved.subPaths.update.path, authenticate: true, handler: this.update },
+      { path: savedRouteMapping.saved.subPaths.delete.path, authenticate: true, handler: this.delete },
     ];
   }
 
   private async create(req: Request, res: Response, next: NextFunction) {
     const method = savedRouteMapping.saved.subPaths.create.name as T;
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   private async update(req: Request, res: Response, next: NextFunction) {
     const method = savedRouteMapping.saved.subPaths.update.name as T;
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   private async delete(req: Request, res: Response, next: NextFunction) {
     const method = savedRouteMapping.saved.subPaths.delete.name as T;
-    await this.processRequest({ method }, req, res, next);
+    return this.processRequest({ method }, req, res, next);
   }
 
   async validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V> {
@@ -67,10 +67,14 @@ export class SavedRoute<T extends keyof SavedEndpoints, V extends SavedRequest<T
   async executeRequest(opts: RouteReqOpts<T>, args: V, res: Response, _next: NextFunction) {
     try {
       const resp = await this.savedProvider[opts.method](args as any);
+      if (! resp) throw new Error('no resp body returned');
+
       res.status(200).send({ status: 'success', resp });
+      return true;
     } catch (err) {
       this.zLog.error(`Error on ${SavedRoute.name} => ${err as Error}`);
       res.status(404).send({ err: NodeUtil.extractErrorMessage(err as Error) });
+      return false;
     }
   }
 }

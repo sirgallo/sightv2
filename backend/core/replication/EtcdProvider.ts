@@ -1,4 +1,3 @@
-import { env } from 'process';
 import { EventEmitter } from 'events';
 import { hostname } from 'os';
 import { Etcd3, Lease, ILeaseKeepAliveResponse, IOptions, Watcher, MultiRangeBuilder, Range } from 'etcd3';
@@ -11,14 +10,15 @@ import {
   ElectionEvent, ElectionListener, WatchEvent, WatchListener, InitWatchOpts, WatchEventData, CreateLeaseOptions, GetAllResponse,
   ELECTION_EVENTS, WATCH_EVENTS, ELECTION_ERROR_TIMEOUT_IN_MS, ETCDDataProcessingOpts
 } from './Etcd.js';
+import { envLoader } from '../../common/EnvLoader.js';
 
 
-const HOSTNAME = hostname();
 export class ETCDProvider extends EventEmitter {
+  private hostname = hostname();
   private client: Etcd3;
   private zLog = new LogProvider(ETCDProvider.name);
 
-  constructor(private hostname = HOSTNAME, private opts = DEFAULT_OPTS) { 
+  constructor(private opts = ETCD_DEFAULT_OPTS) { 
     super();
     this.client = new Etcd3(this.opts);
   }
@@ -152,15 +152,16 @@ export class ETCDProvider extends EventEmitter {
 }
 
 
-type CertPath = `${string}/tensor/certs`
+type CertPath = `${string}/sight/certs`
 
-export const DEFAULT_OPTS: IOptions = (() => {
+export const ETCD_DEFAULT_OPTS: IOptions = (() => {
   const hosts: string[] = ((): string[] => {
-    const listAsString = env.ETCDHOSTS;
+    const listAsString = envLoader.SIGHT_ETCD_HOSTS;
     return listAsString?.split(',') ?? null;
   })();
 
-  return { hosts, 
+  return { 
+    hosts, 
     /* credentials: {
       rootCertificate: readFileSync(join(homedir(), '/solt/certs/etcd'))
     } */

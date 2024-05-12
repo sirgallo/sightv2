@@ -9,7 +9,6 @@ WORKDIR $HOME/api
 
 COPY ./backend/package.json \
   ./backend/package-lock.json \
-  ./backend/ServerConfigurations.ts \
   ./backend/tsconfig.json ./
 
 RUN npm ci

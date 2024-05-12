@@ -1,4 +1,4 @@
-FROM redislabs/redis:latest
+FROM redis:latest
 
 RUN apt-get update && apt-get install -y wget ca-certificates
 
