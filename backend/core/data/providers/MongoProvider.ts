@@ -1,4 +1,4 @@
-import { createConnection, Connection, Schema, ClientSession } from 'mongoose';
+import { createConnection, Connection, ClientSession } from 'mongoose';
 
 import { LogProvider } from '../../log/LogProvider.js';
 import { MongoInitOpts } from '../types/Mongo.js';

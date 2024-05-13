@@ -6,19 +6,20 @@ import { WebSocketOpts } from '../types/WebSocket.js';
 
 
 export class WebSocketProvider extends EventEmitter {  
+  private __wsClient: WebSocket.client;
   constructor(protected opts: WebSocketOpts, protected zLog: LogProvider) { super(); }
 
   on = <EVT extends string, V>(event: EVT, listener: (data: V) => void) => super.on(event, listener);
 
   protected startListener<EVT extends string, U, V = undefined>(event: EVT, request?: V) {
-    const wsClient = new WebSocket.client();
+    this.__wsClient = new WebSocket.client();
 
-    wsClient.on('connectFailed', err => { 
+    this.__wsClient.on('connectFailed', err => { 
       this.zLog.error(err);
       process.exit(1);
     });
     
-    wsClient.on('connect', conn => {
+    this.__wsClient.on('connect', conn => {
       this.zLog.info(`connection opened on websocket for: ${this.opts.endpoint}`);
       
       conn.on('message', message => { 
@@ -40,6 +41,6 @@ export class WebSocketProvider extends EventEmitter {
     });
 
     this.zLog.info(`connecting to: ${this.opts.endpoint}`);
-    wsClient.connect(this.opts.endpoint, this.opts?.requestedProtocols, this.opts?.origin);
+    this.__wsClient.connect(this.opts.endpoint, this.opts?.requestedProtocols, this.opts?.origin);
   }
 }

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build:all": "tsc",
+    "start:broadcast": "node ./dist/broadcast/StartBroadcastServer.js --color",
     "start:gateway": "node ./dist/gateway/StartGatewayServer.js --color",
     "start:search": "node ./dist/search/StartSearchServer.js --color",
     "start:taskrunner": "node ./dist/taskrunner/StartTaskRunnerServer.js --color"
@@ -11,6 +12,7 @@
   "author": "Sir Gallo",
   "license": "ISC",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcrypt": "^5.0.1",
     "chalk": "^4.1.0",
     "cluster": "^0.7.7",
@@ -29,6 +31,8 @@
     "morgan": "^1.10.0",
     "mysql2": "^3.9.7",
     "node-schedule": "^2.1.1",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
     "typescript": "^5.4.5",
     "websocket": "^1.0.34"
   },

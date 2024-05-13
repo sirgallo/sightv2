@@ -5,12 +5,13 @@ import lodash from 'lodash';
 const { transform } = lodash; 
 
 import { LogProvider } from '../log/LogProvider.js';
+import { NodeUtil } from '../../core/utils/Node.js';
+import { envLoader } from '../../common/EnvLoader.js';
 import { EtcdModel, ValueSerializer } from './EtcdModel.js';
 import { 
   ElectionEvent, ElectionListener, WatchEvent, WatchListener, InitWatchOpts, WatchEventData, CreateLeaseOptions, GetAllResponse,
   ELECTION_EVENTS, WATCH_EVENTS, ELECTION_ERROR_TIMEOUT_IN_MS, ETCDDataProcessingOpts
 } from './Etcd.js';
-import { envLoader } from '../../common/EnvLoader.js';
 
 
 export class ETCDProvider extends EventEmitter {
@@ -32,40 +33,53 @@ export class ETCDProvider extends EventEmitter {
   async startElection(electionName: string) {
     const election = this.client.election(electionName);
 
-    const createCampaign = () => {
-      const campaign = election.campaign(this.hostname);
-      this.zLog.info(`campaign started for host: ${this.hostname}`);
-
-      campaign.on('elected', () => {
-        this.zLog.info('I am the new leader');
-        this.emitElectionEvent(ELECTION_EVENTS.elected, true);
-      });
-
-      campaign.on('error', err => {
-        this.zLog.error(`campaign error: ${err.message}`);
+    const createCampaign = async () => {
+      try {
+        const campaign = election.campaign(this.hostname);
+        this.zLog.info(`campaign started for host: ${this.hostname}`);
+  
+        campaign.on('elected', () => {
+          this.zLog.info('I am the new leader');
+          this.emitElectionEvent(ELECTION_EVENTS.elected, true);
+        });
+  
+        campaign.on('error', err => {
+          this.zLog.error(`campaign error: ${NodeUtil.extractErrorMessage(err)}`);
+          setTimeout(() => createCampaign(), ELECTION_ERROR_TIMEOUT_IN_MS);
+        });
+      } catch (err) {
+        this.zLog.error(`campaign initialization error: ${NodeUtil.extractErrorMessage(err)}`);
         setTimeout(() => createCampaign(), ELECTION_ERROR_TIMEOUT_IN_MS);
-      });
+      }
     };
 
     const createObserver = async () => {
-      const observer = await election.observe();
-      this.zLog.info('leader observer started');
+      try {
+        const observer = await election.observe();
+        this.zLog.info('leader observer started');
 
-      observer.on('change', leader => {
-        if (leader !== this.hostname) { 
-          this.zLog.info(`the new leader is: ${leader}`);
-          this.emitElectionEvent(ELECTION_EVENTS.elected, false);
-        }
-      });
+        observer.on('change', leader => {
+          if (leader !== this.hostname) { 
+            this.zLog.info(`the new leader is: ${leader}`);
+            this.emitElectionEvent(ELECTION_EVENTS.elected, false);
+          }
+        });
 
-      observer.on('error', err => {
-        this.zLog.error(`observer error: ${err.message}`);
-        setTimeout(() => createObserver, ELECTION_ERROR_TIMEOUT_IN_MS);
-      });
+        observer.on('error', err => {
+          this.zLog.error(`observer error: ${NodeUtil.extractErrorMessage(err)}`);
+          setTimeout(() => createObserver(), ELECTION_ERROR_TIMEOUT_IN_MS);
+        });
+      } catch (err) {
+        this.zLog.error(`observer initialization error: ${NodeUtil.extractErrorMessage(err)}`);
+        setTimeout(() => createObserver(), ELECTION_ERROR_TIMEOUT_IN_MS);
+      }
     };
 
-    createCampaign();
-    createObserver();
+    try {
+      Promise.all([ createCampaign(), createObserver() ]);
+    } catch (err) {
+      this.zLog.error(`election error: ${NodeUtil.extractErrorMessage(err)}`)
+    }
   }
 
   async startWatcher<EVT extends 'key' | 'prefix', K extends string, PRF = unknown>(opts: InitWatchOpts<EVT, K, PRF>): Promise<Watcher> {

@@ -9,14 +9,16 @@ if [ "$removeServices" == "yes" ]
 then
   echo "removing services and their underlying containers..."
 
-  docker compose -f docker-compose.mongoreplica.yml down
-  docker compose -f docker-compose.sight.yml down
+  docker compose -f docker-compose.mongo.yml down
+  docker compose -f docker-compose.data.yml down
+  docker compose -f docker-compose.service.yml down
 elif [ "$removeServices" == "no" ]
 then
   echo "stopping services...can be restarted"
   
   docker compose -f docker-compose.mongoreplica.yml stop
-  docker compose -f docker-compose.sight.yml stop
+  docker compose -f docker-compose.data.yml stop
+  docker compose -f docker-compose.service.yml stop
 else
   echo truthyInput
 fi

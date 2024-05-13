@@ -12,7 +12,7 @@ curl --location 'https://<your-host>/gateway/auth/register' \
   "displayName": "test_user",
   "phone": "123-456-7890",
   "org": "test_org",
-  "userLevel": "ADMIN"
+  "role": "ADMIN"
 }'
 
 `/gateway/auth/authenticate`

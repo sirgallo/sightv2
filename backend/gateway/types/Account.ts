@@ -10,7 +10,7 @@ export type AccountRequest<T extends keyof AccountEndpoints> =
   ? Pick<IUser, 'userId'>
   : never;
 
-export type AccountResponse = Pick<IUser, 'userId' | 'email' | 'org' | 'phone' | 'userLevel'>
+export type AccountResponse = Pick<IUser, 'userId' | 'email' | 'org' | 'phone' | 'role'>
   
 
 export interface AccountEndpoints {

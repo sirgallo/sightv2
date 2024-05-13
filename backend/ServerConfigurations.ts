@@ -3,11 +3,19 @@ import { envLoader } from './common/EnvLoader.js';
 
 
 export type ApplicableSystems = 
-  'gateway' 
+  'broadcast'
+  | 'gateway' 
   | 'search' 
   | 'taskrunner';
 
 export const serverConfigurations: { [server in ApplicableSystems]: ServerConfiguration<server> } = {
+  broadcast: {
+    root: '/broadcast',
+    port: 1000,
+    name: 'broadcast api',
+    numOfCpus: 1,
+    version: envLoader.SIGHT_PLATFORM_VERSION,
+  },
   gateway: {
     root: '/gateway',
     port: 1234,
@@ -30,3 +38,11 @@ export const serverConfigurations: { [server in ApplicableSystems]: ServerConfig
     version: envLoader.SIGHT_PLATFORM_VERSION
   }
 };
+
+
+export const socketConfigurations: { [server in ApplicableSystems]?: { [service: string]: number } } = {
+  broadcast: {
+    client: 9998,
+    internal: 9999
+  }
+}

@@ -3,6 +3,7 @@ import { Document, Model, Schema } from 'mongoose';
 import { MongoProvider } from '../core/data/providers/MongoProvider.js';
 import { ACLDocument, ACLSchema } from './models/ACL.js';
 import { EntityDocument, EntitySchema, ModelDocument, ModelSchema, RelationshipDocument, RelationshipSchema } from './models/Model.js';
+import { OrgDocument, OrgSchema } from './models/Org.js';
 import { SearchDocument, SearchSchema } from './models/Search.js';
 import { SourceDocument, SourceSchema } from './models/Source.js';
 import { TokenDocument, TokenSchema, UserDocument, UserSchema } from './models/User.js';
@@ -15,6 +16,7 @@ export class SightMongoProvider extends MongoProvider {
   entity: Model<EntityDocument>;
   relationship: Model<RelationshipDocument>;
   model: Model<ModelDocument>;
+  org: Model<OrgDocument>;
   search: Model<SearchDocument>;
   source: Model<SourceDocument>;
   task: Model<TaskDocument>;
@@ -28,6 +30,7 @@ export class SightMongoProvider extends MongoProvider {
     this.entity = this.modelValidator<EntityDocument>(dbConf.sight.collections.entity);
     this.relationship = this.modelValidator<RelationshipDocument>(dbConf.sight.collections.relationship);
     this.model = this.modelValidator<ModelDocument>(dbConf.sight.collections.model);
+    this.org = this.modelValidator<OrgDocument>(dbConf.sight.collections.org);
     this.search = this.modelValidator<SearchDocument>(dbConf.sight.collections.search);
     this.source = this.modelValidator<SourceDocument>(dbConf.sight.collections.source);
     this.task = this.modelValidator<TaskDocument>(dbConf.sight.collections.task);
@@ -47,6 +50,7 @@ export class SightMongoProvider extends MongoProvider {
     if (model === 'entity') return EntitySchema;
     if (model === 'relationship') return RelationshipSchema;
     if (model === 'model') return ModelSchema;
+    if (model === 'org') return OrgSchema;
     if (model === 'search') return SearchSchema;
     if (model === 'source') return SourceSchema;
     if (model === 'task') return TaskSchema;
@@ -67,6 +71,7 @@ export const dbConf: DBMap<DBName> = {
       entity: 'entity',
       relationship: 'relationship',
       model: 'model',
+      org: 'org',
       search: 'search',
       source: 'source',
       task: 'task',

@@ -1,4 +1,4 @@
-import { RedisOptions } from 'ioredis';
+import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 
 import { VectorDb } from './Redis.js';
 
@@ -17,7 +17,7 @@ export type TensorMetadata = { [prop: string]: string | number };
 
 
 export type TensorOperation = 'AI.TENSORSET' | 'AI.TENSORGET';
-export type TensorMetadataOperation = 'METADATA.SET' | 'METADATA.GET';
+export type TensorMetadataOperation = 'METADATA.SET' | 'METADATA.GET' | 'METADATA.DEL';
 
 export type TensorDbOperation = TensorOperation | TensorMetadataOperation;
 type TensorDbOperationMap = { [op in TensorDbOperation]: op };
@@ -28,7 +28,7 @@ type TensorTypeMap = { [type in TensorType]: type };
 
 export interface TensorDbOpts {
   dbName: VectorDb;
-  redisOpts?: RedisOptions;
+  connOpts?: { redis: RedisOptions } | { nodes: ClusterNode[], cluster: ClusterOptions };
 }
 
 export interface SetTensorsOpts {
@@ -74,6 +74,8 @@ export type ExecTensorResponse<
     ? TensorData['v']
     : T extends 'METADATA.GET'
     ? TensorMetadata
+    : T extends 'METADATA.DEL'
+    ? boolean
     : never;
 
 
@@ -91,7 +93,8 @@ export const TENSOR_CONSTANTS: TensorConstants = {
     'AI.TENSORSET': 'AI.TENSORSET',
     'AI.TENSORGET': 'AI.TENSORGET',
     'METADATA.SET': 'METADATA.SET',
-    'METADATA.GET': 'METADATA.GET'
+    'METADATA.GET': 'METADATA.GET',
+    'METADATA.DEL': 'METADATA.DEL'
   },
   CMD: { VALUES: 'VALUES' },
   PREFIX: { METADATA: 'tensor_meta' },

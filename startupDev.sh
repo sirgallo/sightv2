@@ -14,7 +14,7 @@ then
   then
     docker compose -f docker-compose.mongo.yml up --build -d
     docker exec -it sight_db_replica_0 /scripts/rs-init.sh
-    sleep 20
+    sleep 10
   elif [ "$database" == "no" ]
   then
     echo "database not selected for build"
@@ -22,17 +22,31 @@ then
     echo "invalid input for database"
   fi
 
-  echo "build services?: (yes or no)"
+  echo "build data layer?: (yes or no)"
+  read data
+
+  if [ "$data" == "yes" ]
+  then
+    docker compose -f docker-compose.data.yml up --build -d
+    sleep 10
+  elif [ "$data" == "no" ]
+  then
+    echo "data layer not selected for build"
+  else
+    echo "invalid input for data layer"
+  fi
+
+  echo "build service layer?: (yes or no)"
   read services
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.sight.yml up --build
+    docker compose -f docker-compose.service.yml up --build
   elif [ "$services" == "no" ]
   then
-    echo "services not selected for build"
+    echo "service layer not selected for build"
   else
-    echo "invalid input for services"
+    echo "invalid input for service layer"
   fi
 elif [ "$action" == "restart" ]
 then  
@@ -43,7 +57,7 @@ then
 
   if [ "$database" == "yes" ]
   then
-    docker compose -f docker-compose.mongo.yml start
+    docker compose -f docker-compose.mongo.yml start -d
     sleep 10
   elif [ "$database" == "no" ]
   then
@@ -52,17 +66,30 @@ then
     echo "invalid input for database"
   fi
 
-  echo "restart services?: (yes or no)"
+  echo "restart data layer?: (yes or no)"
+  read data
+
+  if [ "$data" == "yes" ]
+  then
+    docker compose -f docker-compose.data.yml start -d
+  elif [ "$data" == "no" ]
+  then
+    echo "data layer not selected for restart"
+  else
+    echo "invalid input for data layer"
+  fi
+
+  echo "restart service layer?: (yes or no)"
   read services
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.sight.yml start
+    docker compose -f docker-compose.service.yml start
   elif [ "$services" == "no" ]
   then
-    echo "services not selected for restart"
+    echo "service layer not selected for restart"
   else
-    echo "invalid input for services"
+    echo "invalid input for service layer"
   fi
 else
   echo "input should be build or restart"

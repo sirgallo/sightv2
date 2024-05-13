@@ -5,7 +5,7 @@ const { sign, verify } = jsonwebtoken;
 import { LogProvider } from '../log/LogProvider.js';
 import { NodeUtil } from '../utils/Node.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
-import { IToken } from '../../db/models/User.js';
+import { IToken, IUser } from '../../db/models/User.js';
 
 
 export class JWTMiddleware {
@@ -27,45 +27,41 @@ export class JWTMiddleware {
     if (scheme !== 'Bearer' || ! token) return res.sendStatus(401);
 
     try {
-      const { secret } = this.opts;
-      const verifyWrapper = () => verify(token, secret);
-      const decodedUserId = await NodeUtil.wrapAsync(verifyWrapper);
-      
-      req['user'] = { userId: decodedUserId as string };
+      const { user, newToken } = await this.verify(token);
+      if (newToken) req.header['authorization'] = `Bearer ${newToken}`;
+      req['user'] = user
       next();
     } catch (err) {
-      if (err instanceof jsonwebtoken.TokenExpiredError) return this.handleRefreshToken(req, res, next, token);
-      
-      this.zLog.error(`decode error: ${NodeUtil.extractErrorMessage(err)}`)
+      this.zLog.error(`authenticate error: ${NodeUtil.extractErrorMessage(err)}`)
       return res.sendStatus(403);
     }
   }
 
-  private async handleRefreshToken(req: Request, res: Response, next: NextFunction, token: string) {
+  async verify(token: string, opts?: { ignoreExpiration: true }): Promise<JWTVerifyPayload> {
+    const { secret } = this.opts;
+    const verifyWrapper = () => verify(token, secret, opts);
+
+    const sightDb = new SightMongoProvider();
+    await sightDb.createNewConnection();
+    
     try {
-      const sightDb = new SightMongoProvider();
-      await sightDb.createNewConnection();
+      const decoded = await NodeUtil.wrapAsync(verifyWrapper);
+      const { userId, displayName, org, role }: IUser = await sightDb.user.findOne({ userId: decoded as string });
+      return { user: { userId, displayName, org, role } };
+    } catch (err) {
+      if (err instanceof jsonwebtoken.TokenExpiredError && ! opts) { return this.handleRefreshToken(token, sightDb); }
+      throw err;
+    } finally { await sightDb.conn.close(); }
+  }
 
-      const userId = await (async (): Promise<string> => {
-        const { secret } = this.opts;
-        const verifyWrapper = () => verify(token, secret, { ignoreExpiration: true }) as string;
-        
-        return NodeUtil.wrapAsync(verifyWrapper); // we decode without verifying the expiration here
-      })();
+  private async handleRefreshToken(token: string, sightDb: SightMongoProvider): Promise<JWTVerifyPayload> {
+    const { user } = await this.verify(token, { ignoreExpiration: true });
+    
+    const refreshToken: IToken = await sightDb.token.findOne({ userId: user.userId });
+    if (! refreshToken) throw new Error('no valid refresh token');
 
-      const refreshToken: IToken = await sightDb.token.findOne({ userId });
-      if (refreshToken) {
-        const newToken = await this.sign(userId);
-        
-        req.header['authorization'] = `Bearer ${newToken}`;
-        req['user'] = { userId };
-        
-        next();
-      } else { throw new Error('no valid refresh token'); }
-    } catch(err) {
-      this.zLog.error(`refresh token err: ${NodeUtil.extractErrorMessage(err)}`);
-      return res.sendStatus(403);
-    }
+    const newToken = await this.sign(user.userId);
+    return { user, newToken };
   }
 }
 
@@ -73,4 +69,9 @@ export class JWTMiddleware {
 export interface JWTOpts {
   secret: string;
   timespanInSec: number;
+}
+
+export interface JWTVerifyPayload { 
+  user: Pick<IUser, 'userId' | 'displayName' | 'org' | 'role'>,
+  newToken?: string
 }

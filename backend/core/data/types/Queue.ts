@@ -1,11 +1,11 @@
-import { RedisOptions } from 'ioredis';
+import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 
 import { QueueDb } from './Redis.js';
 
 
 export interface QueueOpts {
   queueName: QueueDb;
-  redisOpts?: RedisOptions;
+  connOpts?: { redis: RedisOptions } | { nodes: ClusterNode[], cluster: ClusterOptions };
 }
 
 export type BPOPResp = [

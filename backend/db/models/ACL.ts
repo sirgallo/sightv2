@@ -18,7 +18,7 @@ const permissionedUserList = <const>[ // full access, can update permissions on 
 ];
 export type PermissionedUser = typeof permissionedUserList[number];
 
-export type UserLevel = Admin | PermissionedUser;
+export type UserRole = Admin | PermissionedUser;
 
 
 export interface IACL {

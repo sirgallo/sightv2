@@ -1,13 +1,13 @@
 import lodash from 'lodash';
 const { first } = lodash;
 
-import { SightMongoProvider } from '../../db/SightProvider.js';
-import { ModelEndpoints, ModelRequest, ModelResponse } from '../types/Model.js';
+import { CryptoUtil } from '../../core/utils/Crypto.js';
 import { LogProvider } from '../../core/log/LogProvider.js';
 import { NodeUtil } from '../../core/utils/Node.js';
-import { IEntity, IModel, IRelationship, RelationshipType } from 'db/models/Model.js';
-import { CryptoUtil } from 'core/utils/Crypto.js';
-import { FilterQuery, PipelineStage } from 'mongoose';
+import { SightMongoProvider } from '../../db/SightProvider.js';
+import { IEntity, IModel, IRelationship, RelationshipType } from '../../db/models/Model.js';
+import { ModelAggregateGenerator } from './generators/ModelPipelineGenerator.js';
+import { ModelEndpoints, ModelRequest, ModelResponse } from '../types/Model.js';
 
 
 export class ModelProvider implements ModelEndpoints {
@@ -44,6 +44,7 @@ export class ModelProvider implements ModelEndpoints {
     try {
       const pipeline = ModelAggregateGenerator.aggregate(opts);
       const resp: ModelResponse<'view', T> = first(await this.sightDb.model.aggregate(pipeline));
+      if (! resp) throw new Error('resp for model view is empty');
 
       return resp;
     } catch (err) {
@@ -180,65 +181,4 @@ export class ModelProvider implements ModelEndpoints {
   }
 
   private incrementVersion = (v: number): number => v++;
-}
-
-
-class ModelAggregateGenerator {
-  static aggregate = <T extends RelationshipType>(opts: ModelRequest<'view', T>): PipelineStage[] => {
-    return [
-      ModelAggregateGenerator.modelFilter(opts),
-      ModelAggregateGenerator.entityLookup(),
-      ModelAggregateGenerator.relationshipLookup(),
-      ModelAggregateGenerator.aclLookup(),
-      { $unwind: { path: 'acl', preserveNullAndEmptyArrays: true } },
-      ModelAggregateGenerator.modelProjection()
-    ]
-  };
-
-  private static modelFilter = <T extends RelationshipType>(opts: ModelRequest<'view', T>): PipelineStage.Match => {
-    const filterQuery: FilterQuery<IModel> = { modelId: opts.modelId };
-    return { $match: filterQuery };
-  }
-
-  private static entityLookup = (): PipelineStage.Lookup => {
-    return {
-      $lookup: {
-        from: 'entities',
-        localField: 'modelId',
-        foreignField: 'modelId',
-        as: 'entities'
-      }
-    };
-  };
-
-  private static relationshipLookup = (): PipelineStage.Lookup => {
-    return {
-      $lookup: {
-        from: 'relationships',
-        localField: 'modelId',
-        foreignField: 'modelId',
-        as: 'relationships'
-      }
-    }
-  };
-
-  private static aclLookup = (): PipelineStage.Lookup => {
-    return {
-      $lookup: {
-        from: 'acl',
-        localField: 'aclId',
-        foreignField: 'aclId',
-        as: 'acl'
-      }
-    }
-  };
-
-  private static modelProjection = (): PipelineStage.Project => {
-    return {
-      $project: {
-        _id: 0, modelId: 1, orgId: 1, createdAt: 1, updatedAt: 1, 
-        acl: 1, entities: 1, relationships: 1
-      }
-    }
-  };
 }

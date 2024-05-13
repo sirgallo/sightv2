@@ -1,6 +1,6 @@
 import { Schema, Document } from 'mongoose';
 
-import { UserLevel } from './ACL.js';
+import { UserRole } from './ACL.js';
 
 
 export const UserCollectionName = 'user';
@@ -17,7 +17,7 @@ export interface IUser {
   displayName: string;
   phone: string;
   org: string;
-  userLevel: UserLevel;
+  role: UserRole;
 
   createdAt?: Date; // injected
   updatedAt?: Date; // injected
@@ -45,7 +45,7 @@ export const UserSchema: Schema<UserDocument> = new Schema({
   phone: { type: String, required: true, unique: true },
   org: { type: String, required: true, unique: false },
   displayName: { type: String, required: true, unique: true },
-  userLevel: { type: String, required: true, unique: false }
+  role: { type: String, required: true, unique: false }
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
   collection: UserCollectionName,

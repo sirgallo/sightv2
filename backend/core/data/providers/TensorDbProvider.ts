@@ -5,23 +5,23 @@ import { MemcacheProvider } from './MemcacheProvider.js';
 import { LogProvider } from '../../log/LogProvider.js';
 import { NodeUtil } from '../../utils/Node.js';
 import { 
-  TensorData, TensorDbOpts, TensorOperation, TensorType, TensorMetadata,
+  TensorData, TensorDbOpts, TensorOperation, TensorType,
   TensorMetadataOperation, ExecTensorResponse, ExecTensorOpts, TENSOR_CONSTANTS
 } from '../types/TensorDb.js';
 
 
 export class TensorDbProvider {
-  private redisClient: Redis;
-  private memcache: MemcacheProvider<typeof TENSOR_CONSTANTS.PREFIX.METADATA, TensorMetadata>;
-  private zLog = new LogProvider(TensorDbProvider.name);
+  private __client: Redis;
+  private __memcache: MemcacheProvider<typeof TENSOR_CONSTANTS.PREFIX.METADATA>;
+  private __zLog = new LogProvider(TensorDbProvider.name);
 
-  constructor(opts: TensorDbOpts) {
-    this.redisClient = new RedisProvider(opts.redisOpts).getClient({ service: 'vector', db: opts.dbName });
-    this.memcache = new MemcacheProvider({
-      cacheName: 'tensorcache',
+  constructor(private opts: TensorDbOpts) {
+    this.__client = new RedisProvider(this.opts.connOpts).getClient({ service: 'vector', db: opts.dbName });
+    this.__memcache = new MemcacheProvider({
+      cacheName: 'tensor_cache',
       prefix: TENSOR_CONSTANTS.PREFIX.METADATA,
       expirationInSec: 10000,
-      redisOpts: opts.redisOpts 
+      connOpts: this.opts.connOpts 
     });
   }
 
@@ -33,13 +33,13 @@ export class TensorDbProvider {
       
       return this.__getTensorMetadata(opts) as Promise<ExecTensorResponse<T>>;
     } catch (err) {
-      this.zLog.error(`err: ${NodeUtil.extractErrorMessage(err)}`);
+      this.__zLog.error(`err: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;
     }
   }
 
   private async __setTensors(opts: ExecTensorOpts<'AI.TENSORSET'>): Promise<ExecTensorResponse<'AI.TENSORSET'>> {
-    const pipeline = this.redisClient.pipeline();
+    const pipeline = this.__client.pipeline();
     for (const tensor of opts.tensors) { pipeline.call(...TensorDbCommandGenerator.TENSORSET(tensor, opts.tensorType)); }
     await pipeline.exec()
     
@@ -48,23 +48,27 @@ export class TensorDbProvider {
 
   private async __getTensors(opts: ExecTensorOpts<'AI.TENSORGET'>): Promise<ExecTensorResponse<'AI.TENSORGET'>> {
     if (! opts.preprocess) {
-      const pipeline = this.redisClient.pipeline();
+      const pipeline = this.__client.pipeline();
       for (const k of opts.keys) { pipeline.call(...TensorDbCommandGenerator.TENSORGET(k)); }
       const result = await pipeline.exec();
       console.log('result in get:', result);
       return result.map(res => res[1]) as TensorData['v'];
     }
     
-    return this.redisClient.eval(...TensorDbCommandGenerator.TENSORGETLUA(opts.keys)) as Promise<ExecTensorResponse<'AI.TENSORGET'>>;
+    return this.__client.eval(...TensorDbCommandGenerator.TENSORGETLUA(opts.keys)) as Promise<ExecTensorResponse<'AI.TENSORGET'>>;
   }
 
   private async __setTensorMetadata(opts: ExecTensorOpts<'METADATA.SET'>): Promise<ExecTensorResponse<'METADATA.SET'>> {
-    await this.memcache.hset(opts.k, opts.meta);
+    await this.__memcache.hset({ key: opts.k, value: opts.meta });
     return true;
   }
 
   private async __getTensorMetadata(opts: ExecTensorOpts<'METADATA.GET'>): Promise<ExecTensorResponse<'METADATA.GET'>> {
-    return this.memcache.hgetall(opts.k);
+    return this.__memcache.hgetall(opts.k);
+  }
+
+  private async __delTensorMetadata(opts: ExecTensorOpts<'METADATA.GET'>): Promise<ExecTensorResponse<'METADATA.DEL'>> {
+    return this.__memcache.hdel(opts.k);
   }
 }
 

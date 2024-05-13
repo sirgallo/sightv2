@@ -1,0 +1,94 @@
+x-variables:
+  common_api_settings: &common_api_settings
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_TIMEOUT=${JWT_TIMEOUT}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - JWT_REFRESH_TIMEOUT=${JWT_REFRESH_TIMEOUT}
+      - PASSWORD_SALT_ROUNDS=${PASSWORD_SALT_ROUNDS}
+      - SIGHT_DB_HOSTS=${SIGHT_DB_HOSTS}
+      - SIGHT_DB_USER=${SIGHT_DB_USER}
+      - SIGHT_DB_PASS=${SIGHT_DB_PASS}
+      - SIGHT_ETCD_HOSTS=${SIGHT_ETCD_HOSTS}
+      - NODE_ENV=docker
+      - NODE_OPTIONS="--max-old-space-size=4096"
+    networks:
+      api_layer:
+      data_layer:
+    restart: always
+    
+  common_broadcast_settings: &common_broadcast_settings
+    <<: *common_api_settings
+    image: 'sight_broadcast_img'
+    build:
+      context: .
+      dockerfile: ./backend/broadcast/Dockerfile
+    ports:
+      - '1000'
+      - '9998'
+      - '9999'
+    healthcheck:
+      test: curl --fail http://localhost:1000/broadcast/poll || kill 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  common_gateway_settings: &common_gateway_settings
+    <<: *common_api_settings
+    image: 'sight_gateway_img'
+    build:
+      context: .
+      dockerfile: ./backend/gateway/Dockerfile
+    ports:
+      - '1234'
+    healthcheck:
+      test: curl --fail http://localhost:1234/gateway/poll || kill 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+services:
+  sight_proxy: 
+    image: sight_proxy_img
+    hostname: ${HOSTNAME}
+    container_name: sight_proxy
+    build:
+      context: .
+      dockerfile: ./lb/Dockerfile
+    volumes:
+      - $HOME/sight/certs/haproxy:/certs
+    ports: 
+      - '443:443'
+    networks:
+      api_layer:
+    depends_on:
+      - sight_gateway_0
+      - sight_gateway_1
+      - sight_gateway_2
+      - sight_broadcast_0
+      - sight_broadcast_1
+      - sight_broadcast_2
+  sight_gateway_0:
+    <<: *common_gateway_settings
+    container_name: sight_gateway_0
+  sight_gateway_1:
+    <<: *common_gateway_settings
+    container_name: sight_gateway_1
+  sight_gateway_2:
+    <<: *common_gateway_settings
+    container_name: sight_gateway_2
+  sight_broadcast_0:
+    <<: *common_broadcast_settings
+    container_name: sight_broadcast_0
+  sight_broadcast_1:
+    <<: *common_broadcast_settings
+    container_name: sight_broadcast_1
+  sight_broadcast_2:
+    <<: *common_broadcast_settings
+    container_name: sight_broadcast_2
+
+networks:
+  api_layer:
+    driver: bridge
+  data_layer:
+    driver: bridge

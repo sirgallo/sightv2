@@ -4,6 +4,7 @@ services:
     image: mongo:latest
     volumes:
       - ./db/rs-init.sh:/scripts/rs-init.sh
+      - $HOME/sight/sight_db_replica_0:/data/db
     networks:
       data_layer:
     ports:
@@ -24,6 +25,8 @@ services:
     ports:
       - '27019:27017'
     restart: always
+    volumes:
+      - $HOME/sight/sight_db_replica_1:/data/db
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
   sight_db_replica_2:
     container_name: sight_db_replica_2
@@ -33,6 +36,8 @@ services:
     ports:
       - '27020:27017'
     restart: always
+    volumes:
+      - $HOME/sight/sight_db_replica_2:/data/db
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
 
 networks:
