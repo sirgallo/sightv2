@@ -7,12 +7,10 @@ import { MemcacheOpts } from '../types/Memcache.js';
 export class MemcacheProvider<PRF extends string = undefined>{
   private __client: Cluster | Redis;
   constructor(private __opts: MemcacheOpts<PRF>) {
-    const redisProvider = new RedisProvider(this.__opts.connOpts);
+    const redis = new RedisProvider(this.__opts.connOpts);
     if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
-      this.__client = new RedisProvider(this.__opts.connOpts).getCluster({ service: 'memcache', db: this.__opts.cacheName });
-    } else {
-      this.__client = new RedisProvider(this.__opts.connOpts).getClient({ service: 'memcache', db: this.__opts.cacheName });
-    }
+      this.__client = redis.getCluster({ service: 'memcache', db: this.__opts.db });
+    } else { this.__client = redis.getClient({ service: 'memcache', db: this.__opts.db }); }
   }
 
   get client() { return this.__client; }

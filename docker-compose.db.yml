@@ -1,15 +1,25 @@
+x-variables:
+  common_mongo_settings: &common_mongo_settings
+    image: mongo:latest
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+        reservations:
+          memory: 250M
+    networks:
+      data_layer:
+    restart: always
+
 services:
   sight_db_replica_0:
+    <<: *common_mongo_settings
     container_name: sight_db_replica_0
-    image: mongo:latest
     volumes:
       - ./db/rs-init.sh:/scripts/rs-init.sh
       - $HOME/sight/sight_db_replica_0:/data/db
-    networks:
-      data_layer:
     ports:
       - '27018:27017'
-    restart: always
     depends_on:
       - sight_db_replica_1
       - sight_db_replica_2
@@ -18,26 +28,20 @@ services:
       - sight_db_replica_2
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
   sight_db_replica_1:
+    <<: *common_mongo_settings
     container_name: sight_db_replica_1
-    image: mongo:latest
-    networks:
-      data_layer:
-    ports:
-      - '27019:27017'
-    restart: always
     volumes:
       - $HOME/sight/sight_db_replica_1:/data/db
+    ports:
+      - '27019:27017'
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
   sight_db_replica_2:
+    <<: *common_mongo_settings
     container_name: sight_db_replica_2
-    image: mongo:latest
-    networks:
-      data_layer:
-    ports:
-      - '27020:27017'
-    restart: always
     volumes:
       - $HOME/sight/sight_db_replica_2:/data/db
+    ports:
+      - '27020:27017'
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
 
 networks:

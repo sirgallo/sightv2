@@ -19,7 +19,7 @@ export type JoinBroadcastRoomRequest<T extends BroadcastDb> = {
   user: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'>;
 }
 
-type RoomAccess = 'user' | 'org';
+export type RoomAccess = 'user' | 'org';
 
 export interface BroadcastRoomConnect { 
   roomId: string;

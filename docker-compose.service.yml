@@ -1,5 +1,11 @@
 x-variables:
   common_api_settings: &common_api_settings
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+        reservations:
+          memory: 250M
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_TIMEOUT=${JWT_TIMEOUT}
@@ -16,7 +22,26 @@ x-variables:
       api_layer:
       data_layer:
     restart: always
-    
+  common_proxy_settings: &common_proxy_settings
+    image: sight_proxy_img
+    hostname: ${HOSTNAME}
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+        reservations:
+          memory: 250M
+    volumes:
+      - $HOME/sight/certs/haproxy:/certs
+    networks:
+      api_layer:
+    depends_on:
+      - sight_broadcast_0
+      - sight_broadcast_1
+      - sight_broadcast_2
+      - sight_gateway_0
+      - sight_gateway_1
+      - sight_gateway_2
   common_broadcast_settings: &common_broadcast_settings
     <<: *common_api_settings
     image: 'sight_broadcast_img'
@@ -25,6 +50,7 @@ x-variables:
       dockerfile: ./backend/broadcast/Dockerfile
     ports:
       - '1000'
+      - '9997'
       - '9998'
       - '9999'
     healthcheck:
@@ -32,7 +58,6 @@ x-variables:
       interval: 30s
       timeout: 10s
       retries: 3
-
   common_gateway_settings: &common_gateway_settings
     <<: *common_api_settings
     image: 'sight_gateway_img'
@@ -48,35 +73,26 @@ x-variables:
       retries: 3
 
 services:
-  sight_proxy: 
-    image: sight_proxy_img
-    hostname: ${HOSTNAME}
-    container_name: sight_proxy
+  sight_service_proxy: 
+    <<: *common_proxy_settings
+    container_name: sight_service_proxy
     build:
       context: .
-      dockerfile: ./lb/Dockerfile
+      dockerfile: ./lb/Dockerfile.service
     volumes:
       - $HOME/sight/certs/haproxy:/certs
     ports: 
       - '443:443'
-    networks:
-      api_layer:
-    depends_on:
-      - sight_gateway_0
-      - sight_gateway_1
-      - sight_gateway_2
-      - sight_broadcast_0
-      - sight_broadcast_1
-      - sight_broadcast_2
-  sight_gateway_0:
-    <<: *common_gateway_settings
-    container_name: sight_gateway_0
-  sight_gateway_1:
-    <<: *common_gateway_settings
-    container_name: sight_gateway_1
-  sight_gateway_2:
-    <<: *common_gateway_settings
-    container_name: sight_gateway_2
+  sight_io_proxy: 
+    <<: *common_proxy_settings
+    container_name: sight_io_proxy
+    build:
+      context: .
+      dockerfile: ./lb/Dockerfile.io
+    volumes:
+      - $HOME/sight/certs/haproxy:/certs
+    ports: 
+      - '1010:443'
   sight_broadcast_0:
     <<: *common_broadcast_settings
     container_name: sight_broadcast_0
@@ -86,6 +102,15 @@ services:
   sight_broadcast_2:
     <<: *common_broadcast_settings
     container_name: sight_broadcast_2
+  sight_gateway_0:
+    <<: *common_gateway_settings
+    container_name: sight_gateway_0
+  sight_gateway_1:
+    <<: *common_gateway_settings
+    container_name: sight_gateway_1
+  sight_gateway_2:
+    <<: *common_gateway_settings
+    container_name: sight_gateway_2
 
 networks:
   api_layer:

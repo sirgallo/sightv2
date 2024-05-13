@@ -1,31 +1,21 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { Cluster, Redis } from 'ioredis';
 
-import { ETCDProvider } from '../core/replication/EtcdProvider.js';
-import { RedisProvider } from '../core/data/providers/RedisProvider.js';
 import { LogProvider } from '../core/log/LogProvider.js';
 import { CryptoUtil } from '../core/utils/Crypto.js';
 import { TimerUtil } from '../core/utils/Timer.js';
-import { envLoader } from '../common/EnvLoader.js';
-import { SightMongoProvider } from '../db/SightProvider.js';
 import { SightIORunnerOpts, SightIOResults, DEFAULT_RESULTS_FOLDER } from './sight.io.types.js';
 
 
 export abstract class SightIORunner<T> {
-  protected sightDb: SightMongoProvider;
-  protected etcdProvider: ETCDProvider;
-  protected redisClient: Cluster | Redis;
   protected zLog = new LogProvider('toolset --> tensor.io');
-  
   constructor() {}
 
-  async start(opts?: SightIORunnerOpts<T>): Promise<SightIOResults<T>> {
+  async start(): Promise<SightIOResults<T>> {
     try {
       const timer = new TimerUtil('tensor.io');
       
       timer.start('io.run');
-      await this.init(opts.connOpts);
       const results = await this.runIO();
       timer.stop('io.run');
 
@@ -35,14 +25,6 @@ export abstract class SightIORunner<T> {
   }
 
   abstract runIO(): Promise<T>;
-
-  private async init(opts?: SightIORunnerOpts<T>['connOpts']) {
-    this.sightDb = new SightMongoProvider();
-    this.etcdProvider = (() => {
-      if (! opts.etcd) return new ETCDProvider();
-      return new ETCDProvider(opts.etcd);
-    })();
-  }
 }
 
 

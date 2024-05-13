@@ -4,7 +4,7 @@ import { QueueDb } from './Redis.js';
 
 
 export interface QueueOpts {
-  queueName: QueueDb;
+  db: QueueDb;
   connOpts?: { redis: RedisOptions } | { nodes: ClusterNode[], cluster: ClusterOptions };
 }
 

@@ -1,5 +1,5 @@
 import { LogProvider } from '../../core/log/LogProvider.js';
-import { ClientProvider } from './ClientProvider';
+import { ClientProvider } from './ClientProvider.js';
 import { BroadcastRoomData } from '../types/Broadcast.js';
 import { ClientOpts } from '../types/Client.js';
 

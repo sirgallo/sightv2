@@ -42,7 +42,8 @@ export const serverConfigurations: { [server in ApplicableSystems]: ServerConfig
 
 export const socketConfigurations: { [server in ApplicableSystems]?: { [service: string]: number } } = {
   broadcast: {
-    client: 9998,
-    internal: 9999
+    client_broadcast: 9999,
+    internal_broadcast: 9998,
+    io_broadcast: 9997
   }
 }

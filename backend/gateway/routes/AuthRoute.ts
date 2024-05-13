@@ -48,7 +48,7 @@ export class AuthRoute<T extends keyof AuthEndpoints, V extends AuthRequest<T>> 
         if (RouteRequestValidators.isEmptObject(potential)) throw new Error('empty request');
         if (RouteRequestValidators.isInvalidType('string', potential.email)) throw new Error('invalid args on request');
         if (RouteRequestValidators.isInvalidType('string', potential.password)) throw new Error('invalid args on request');
-        if (RouteRequestValidators.isInvalidType('string', potential.org)) throw new Error('invalid args on request');
+        if (RouteRequestValidators.isInvalidType('string', potential.orgId)) throw new Error('invalid args on request');
   
         return potential as V;
       }

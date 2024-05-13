@@ -19,25 +19,19 @@ export class BroadcastServer extends Server<ApplicableSystems> {
   }
 
   async startEventListeners(): Promise<void> {
-    try {
-      const etcdProvider = new ETCDProvider();
-
-      etcdProvider.startElection(BroadcastServer.name);
-      etcdProvider.onElection('elected', async elected => {
-        try {
-          if (elected) {
-            if (envLoader.SIGHT_REDIS_DEPLOYMENT === 'cluster') BroadcastServerProcessor.startCluster();
-            else BroadcastServerProcessor.startClient();
-          }
-        } catch (err) { 
-          this.zLog.error(err);
-          process.exit(1);
+    const etcdProvider = new ETCDProvider();
+    etcdProvider.startElection(BroadcastServer.name);
+    etcdProvider.onElection('elected', async elected => {
+      try {
+        if (elected) {
+          if (envLoader.SIGHT_REDIS_DEPLOYMENT === 'cluster') BroadcastServerProcessor.startCluster();
+          else BroadcastServerProcessor.startClient();
         }
-      });
-    } catch (err) {
-      this.zLog.error(err);
-      process.exit(1);
-    }
+      } catch (err) { 
+        this.zLog.error(err);
+        process.exit(1);
+      }
+    });
   }
 }
 

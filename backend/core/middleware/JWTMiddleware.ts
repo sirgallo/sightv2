@@ -46,8 +46,8 @@ export class JWTMiddleware {
     
     try {
       const decoded = await NodeUtil.wrapAsync(verifyWrapper);
-      const { userId, displayName, org, role }: IUser = await sightDb.user.findOne({ userId: decoded as string });
-      return { user: { userId, displayName, org, role } };
+      const { userId, displayName, orgId, role }: IUser = await sightDb.user.findOne({ userId: decoded as string });
+      return { user: { userId, displayName, orgId, role } };
     } catch (err) {
       if (err instanceof jsonwebtoken.TokenExpiredError && ! opts) { return this.handleRefreshToken(token, sightDb); }
       throw err;
@@ -72,6 +72,6 @@ export interface JWTOpts {
 }
 
 export interface JWTVerifyPayload { 
-  user: Pick<IUser, 'userId' | 'displayName' | 'org' | 'role'>,
+  user: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'>,
   newToken?: string
 }

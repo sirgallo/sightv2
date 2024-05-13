@@ -12,7 +12,7 @@ then
 
   if [ "$database" == "yes" ]
   then
-    docker compose -f docker-compose.mongo.yml up --build -d
+    docker compose -f docker-compose.db.yml up --build -d
     docker exec -it sight_db_replica_0 /scripts/rs-init.sh
     sleep 10
   elif [ "$database" == "no" ]
@@ -57,7 +57,7 @@ then
 
   if [ "$database" == "yes" ]
   then
-    docker compose -f docker-compose.mongo.yml start -d
+    docker compose -f docker-compose.db.yml start -d
     sleep 10
   elif [ "$database" == "no" ]
   then

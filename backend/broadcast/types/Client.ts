@@ -1,6 +1,7 @@
 import { BroadcastDb } from '../../core/data/types/Redis.js';
 import { BroadcastEvent, BroadcastOpts } from './Broadcast.js';
 
+
 export type Protocol = 'https' | 'wss';
 
 export interface ClientOpts extends BroadcastOpts {

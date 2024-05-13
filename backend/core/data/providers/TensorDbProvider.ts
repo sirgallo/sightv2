@@ -18,7 +18,7 @@ export class TensorDbProvider {
   constructor(private opts: TensorDbOpts) {
     this.__client = new RedisProvider(this.opts.connOpts).getClient({ service: 'vector', db: opts.dbName });
     this.__memcache = new MemcacheProvider({
-      cacheName: 'tensor_cache',
+      db: 'tensor_cache',
       prefix: TENSOR_CONSTANTS.PREFIX.METADATA,
       expirationInSec: 10000,
       connOpts: this.opts.connOpts 

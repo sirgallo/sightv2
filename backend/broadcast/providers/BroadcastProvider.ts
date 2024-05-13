@@ -7,7 +7,6 @@ import { ACLMiddleware } from '../../core/middleware/ACLMiddleware.js';
 import { NodeUtil } from '../../core/utils/Node.js';
 import { BroadcastDb, broadcastDbs } from '../../core/data/types/Redis.js';
 import { MemcacheProvider } from '../../core/data/providers/MemcacheProvider.js';
-import { MemcacheOpts } from '../../core/data/types/Memcache.js';
 import { socketConfigurations } from '../../ServerConfigurations.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { IUser } from '../../db/models/User.js';
@@ -17,7 +16,6 @@ import { BroadcastOpts, BroadcastRoomConnect, BroadcastRoomData, broadcastEventM
 export class BroadcastProvider {
   private __memcache: MemcacheProvider;
   private __connectorMap: Map<BroadcastDb, Server> = new Map();
-  private __roomSocketMap: Map<string, string[]> = new Map();
   private __jwtMiddleware = new JWTMiddleware({ secret: envLoader.JWT_SECRET, timespanInSec: envLoader.JWT_TIMEOUT });
   private __zLog = new LogProvider(BroadcastProvider.name);
 
@@ -33,10 +31,7 @@ export class BroadcastProvider {
 
   private initialize(opts: BroadcastOpts) {
     for (const db of broadcastDbs) { // for each db start a listener, both pub sub on redis and socket
-      const expirationInSec = envLoader.JWT_TIMEOUT;
-      const memcacheOpts: MemcacheOpts = { cacheName: 'room_cache', expirationInSec, ...opts };
-
-      this.__memcache = new MemcacheProvider(memcacheOpts);
+      this.__memcache = new MemcacheProvider({ db: 'room_cache', expirationInSec: envLoader.JWT_TIMEOUT, ...opts });
       this.__connectorMap.set(db, new Server({ adapter: createAdapter(this.__memcache.client, this.__memcache.client.duplicate()) }));
       this.__zLog.info(`${db} --> initialized`)
     }
@@ -48,15 +43,12 @@ export class BroadcastProvider {
         const { verified, payload } = await this.checkAuth(opts.token); // check incoming auth token
 
         if (! verified) throw new Error('incoming user connection did not pass auth verification');
-        if (opts.roomType === 'org' && opts.roomId !== payload.user.org) throw new Error('incoming user is not in room organization');
+        if (opts.roomType === 'org' && opts.roomId !== payload.user.orgId) throw new Error('incoming user is not in room organization');
 
         const token = (() => {
-          if (payload.newToken) {
-            socket.emit(broadcastEventMap.REFRESH, payload.newToken);
-            return payload.newToken;
-          }
-
-          return opts.token;
+          if (! payload.newToken) return opts.token;
+          socket.emit(broadcastEventMap.REFRESH, payload.newToken);
+          return payload.newToken;
         })();
 
         const userMeta = { ...payload.user, token };
@@ -66,7 +58,6 @@ export class BroadcastProvider {
         const socketIds = [ socket.id, ...roomMetadata.socketIds ];
         await this.__memcache.hset({ key: opts.roomId, value: socketIds })
 
-        this.__roomSocketMap.set(opts.roomId, [ ...socketIds, socket.id ]);
         socket.join(db);
       } catch (err) {
         socket.emit(broadcastEventMap.ERROR, opts.roomId, `authentication failed for socket id: ${socket.id}`);
@@ -94,7 +85,6 @@ export class BroadcastProvider {
           } else { 
             const newToken = authPayload.payload.newToken;
             if (newToken) socket.to(socketId).emit(broadcastEventMap.REFRESH, newToken);
-            
             socket.to(socketId).emit(event, payload); 
             updatedSocketIds.push(socketId);
           }
@@ -117,8 +107,9 @@ export class BroadcastProvider {
         const rootMeta: { socketIds: string[] } = await this.__memcache.hgetall(roomId) ?? { socketIds: [] };
         const socketIdIndex = rootMeta.socketIds.findIndex(id => id === socket.id);
         if (socketIdIndex !== -1) {
-          if (rootMeta.socketIds.length <= 1) { await this.__memcache.hdel(roomId); }
-          else {
+          if (rootMeta.socketIds.length <= 1) { 
+            await this.__memcache.hdel(roomId); 
+          } else {
             const updatedSocketIds = [ ...rootMeta.socketIds.slice(0, socketIdIndex), ...rootMeta.socketIds.slice(socketIdIndex + 1) ];
             await this.__memcache.hset({ key: roomId, value: updatedSocketIds });
           }

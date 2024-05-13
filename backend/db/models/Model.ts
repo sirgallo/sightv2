@@ -27,18 +27,12 @@ type __relationship<T extends RelationshipType> =
 type __propIdPriorityType = 'primary' | 'secondary' | 'n/a';
 type __entityProps = { 
   [prop: string]: { 
-    type: string;
+    type: { primitive: 'boolean' | 'number' | 'string' | 'object' | 'date', array?: boolean };
     optional?: boolean; // default false
     unique?: boolean; // default false
     identifier?: __propIdPriorityType; // default n/a
   }
 };
-
-interface __entity {
-  label: string;
-  props: __entityProps;
-  v: number;
-}
 
 interface __object<MDL extends ModelObjectType, REL extends RelationshipType | unknown = unknown> {
   objectId: string;
@@ -49,7 +43,7 @@ interface __object<MDL extends ModelObjectType, REL extends RelationshipType | u
   v: number;
   metadata: (
     MDL extends 'entity' 
-    ? __entity
+    ? __entityProps
     : MDL extends 'relationship'
     ? __relationship<REL extends RelationshipType ? REL : never>
     : never

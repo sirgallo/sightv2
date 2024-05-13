@@ -13,17 +13,13 @@ export abstract class ClientProvider {
   private __endpoint: SocketEndpoint<Protocol>;
 
   constructor(protected opts: ClientOpts, protected zLog: LogProvider, private __backoffTimeout = 250) {
-    this.endpointResolver(this.opts.conn);
-    this.initialize();
+    this.__endpointResolver(this.opts.conn);
+    this.__initialize();
   }
 
   get endpoint() { return this.__endpoint; }
 
-  private initialize() { 
-    this.__socket = io(this.__endpoint);
-  }
-
-  protected listen(listenOpts: Pick<BroadcastRoomConnect, 'roomId' | 'roomType' | 'token'>) {
+  async listen(listenOpts: Pick<BroadcastRoomConnect, 'roomId' | 'roomType' | 'token'>) {
     this.__socket.on(clientEventMap.connection, (socket: Socket) => { 
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db };
       socket.emit(broadcastEventMap.JOIN, connectOpts);
@@ -57,6 +53,10 @@ export abstract class ClientProvider {
     });
   }
 
+  private __initialize() { 
+    this.__socket = io(this.__endpoint);
+  }
+
   protected clientOn<T>(event: BroadcastEvent, listener: (msg: BroadcastRoomData<T>) => void) {
     this.__socket.emit(event, listener);
   }
@@ -65,7 +65,7 @@ export abstract class ClientProvider {
     this.__socket.emit(event, msg);
   }
 
-  private endpointResolver = (opts?: { protocol: Protocol, endpoint: string, port?: number }) => {
+  private __endpointResolver = (opts?: { protocol: Protocol, endpoint: string, port?: number }) => {
     const { endpoint, port } = ((): { protocol: Protocol, endpoint: string, port?: number } => {
       if (opts) return opts;
       return { endpoint: envLoader.SIGHT_PLATFORM_ENDPOINT, protocol: 'https' };

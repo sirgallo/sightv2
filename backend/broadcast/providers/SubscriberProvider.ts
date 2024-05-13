@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { LogProvider } from '../../core/log/LogProvider.js';
-import { ClientProvider } from './ClientProvider';
+import { ClientProvider } from './ClientProvider.js';
 import { BroadcastEvent, BroadcastRoomData } from '../types/Broadcast.js';
 import { SubscriberOpts } from '../types/Client.js';
 
