@@ -12,11 +12,11 @@ export const TokenCollectionName = 'token';
 
 export interface IUser {
   userId: string;
+  orgId: string;
   email: string;
   password: string;
   displayName: string;
   phone: string;
-  org: string;
   role: UserRole;
 
   createdAt?: Date; // injected
@@ -43,7 +43,7 @@ export const UserSchema: Schema<UserDocument> = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, unique: false },
   phone: { type: String, required: true, unique: true },
-  org: { type: String, required: true, unique: false },
+  orgId: { type: String, required: true, unique: false },
   displayName: { type: String, required: true, unique: true },
   role: { type: String, required: true, unique: false }
 }, { 

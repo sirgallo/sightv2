@@ -4,10 +4,20 @@ import { IOptions } from 'etcd3';
 import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 
 import { MongoInitOpts } from '../core/data/types/Mongo.js';
-import { SightIO } from './sight.io.js';
+import { SightIO } from './sight.io.runner.js';
 
 
-export interface SightIOOpts<T> {
+export interface SightIODataOpts<T> {
+  ioData: SightIO<T>;
+  saveResultsToDisk?: boolean;
+  connOpts?: {
+    db?:  MongoInitOpts;
+    etcd?: IOptions;
+    redis?: { redis: RedisOptions } | { nodes: ClusterNode[], cluster: ClusterOptions }, 
+  };
+}
+
+export interface SightIORunnerOpts<T> {
   ioRunner: SightIO<T>;
   saveResultsToDisk?: boolean;
   connOpts?: {

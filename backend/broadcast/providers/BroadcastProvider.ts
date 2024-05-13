@@ -80,7 +80,7 @@ export class BroadcastProvider {
         
         const updatedSocketIds: string[] = [];
         for (const socketId of roomMetadata.socketIds) { 
-          const userMeta: Pick<IUser, 'userId' | 'displayName' | 'org' | 'role'> & { token: string } = await this.__memcache.hgetall(socketId);
+          const userMeta: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'> & { token: string } = await this.__memcache.hgetall(socketId);
           if (! userMeta) {  
             socket.to(socketId).emit(broadcastEventMap.ERROR, `user metadata does not exist for socket id: ${socket.id}`);
             continue;

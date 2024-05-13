@@ -16,7 +16,7 @@ export type ClientEvents = 'connection' | 'reconnect_attempt' | 'reconnect' | 'd
 export type JoinBroadcastRoomRequest<T extends BroadcastDb> = {
   token: string;
   room: T;
-  user: Pick<IUser, 'userId' | 'displayName' | 'org' | 'role'>;
+  user: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'>;
 }
 
 type RoomAccess = 'user' | 'org';

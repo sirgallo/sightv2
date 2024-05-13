@@ -12,7 +12,7 @@ export abstract class ClientProvider {
   private __socket: Socket;
   private __endpoint: SocketEndpoint<Protocol>;
 
-  constructor(protected opts: ClientOpts, protected zLog: LogProvider, private backoffTimeout = 250) {
+  constructor(protected opts: ClientOpts, protected zLog: LogProvider, private __backoffTimeout = 250) {
     this.endpointResolver(this.opts.conn);
     this.initialize();
   }
@@ -39,7 +39,7 @@ export abstract class ClientProvider {
     this.__socket.io.on(clientEventMap.reconnect_attempt, async attempt => {
       this.zLog.debug(`${clientEventMap.reconnect_attempt}, ${attempt}`);
       
-      const timeout = BackoffUtil.strategy(attempt, this.backoffTimeout);
+      const timeout = BackoffUtil.strategy(attempt, this.__backoffTimeout);
       await NodeUtil.sleep(timeout);
     });
     

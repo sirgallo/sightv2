@@ -16,7 +16,6 @@ export interface IOrg {
   orgId: string;
   name: string;
   industry: string;
-  subscription: Subscription;
 
   createdAt?: Date; // injected
   updatedAt?: Date; // injected
@@ -33,7 +32,6 @@ export const OrgSchema: Schema<OrgDocument> = new Schema({
   orgId: { type: String, required: true, unique: true },
   name: { type: String, required: true, unique: true },
   industry: { type: String, required: true, unique: false },
-  subscription: { type: String, required: true, unique: true }
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
   collection: UserCollectionName,

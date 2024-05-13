@@ -9,10 +9,10 @@ import { CryptoUtil } from '../core/utils/Crypto.js';
 import { TimerUtil } from '../core/utils/Timer.js';
 import { envLoader } from '../common/EnvLoader.js';
 import { SightMongoProvider } from '../db/SightProvider.js';
-import { SightIOOpts, SightIOResults, DEFAULT_RESULTS_FOLDER } from './sight.io.types.js';
+import { SightIORunnerOpts, SightIOResults, DEFAULT_RESULTS_FOLDER } from './sight.io.types.js';
 
 
-export abstract class SightIO<T> {
+export abstract class SightIORunner<T> {
   protected sightDb: SightMongoProvider;
   protected etcdProvider: ETCDProvider;
   protected redisClient: Cluster | Redis;
@@ -20,7 +20,7 @@ export abstract class SightIO<T> {
   
   constructor() {}
 
-  async start(opts?: SightIOOpts<T>): Promise<SightIOResults<T>> {
+  async start(opts?: SightIORunnerOpts<T>): Promise<SightIOResults<T>> {
     try {
       const timer = new TimerUtil('tensor.io');
       
@@ -36,7 +36,7 @@ export abstract class SightIO<T> {
 
   abstract runIO(): Promise<T>;
 
-  private async init(opts?: SightIOOpts<T>['connOpts']) {
+  private async init(opts?: SightIORunnerOpts<T>['connOpts']) {
     this.sightDb = new SightMongoProvider();
     this.etcdProvider = (() => {
       if (! opts.etcd) return new ETCDProvider();
@@ -46,8 +46,8 @@ export abstract class SightIO<T> {
 }
 
 
-export const tensorIORunner = async <T>(opts: SightIOOpts<T>) => {
-  const zLog = new LogProvider('toolset --> tensor.io.runner');
+export const sightIORunner = async <T>(opts: SightIORunnerOpts<T>) => {
+  const zLog = new LogProvider('io --> sight.io.runner');
 
   const writeToDisk = (results: SightIOResults<T>) => {
     const now = new Date().toISOString();

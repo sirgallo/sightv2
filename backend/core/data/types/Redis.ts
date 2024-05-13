@@ -11,25 +11,28 @@ export const redisServices = <const> [
 ];
 
 export const broadcastDbs = <const>[
-  'client',
-  'internal'
+  'client_broadcast',
+  'internal_broadcast',
+  'io_broadcast'
 ];
 
 export const memcacheDbs = <const>[
   'acl_cache',
   'model_cache',
   'room_cache',
-  'tensor_cache'
+  'tensor_cache',
+  'io_cache'
 ];
 
 export const queueDbs = <const>[
   'search_queue',
-  'task_queue'
+  'task_queue',
+  'io_queue'
 ];
 
 export const vectorDbs = <const>[
-  'tensor_db',
-  'tensor_io'
+  'db_tensor',
+  'io_tensor'
 ];
 
 export type RedisService = typeof redisServices[number];
@@ -61,10 +64,10 @@ export interface ClientOpts<T extends RedisService> {
 }
 
 export const REDIS_SERVICE_REGISTRY: RedisServiceRegistry = {
-  broadcast: { offset: 0, dbs: { client: 0, internal: 1 } },
-  memcache: { offset: 4, dbs: { acl_cache: 4, model_cache: 5, room_cache: 6, tensor_cache: 7 } },
-  queue: { offset: 8, dbs: { search_queue: 8, task_queue: 9 } },
-  vector: { offset: 12, dbs: { tensor_db: 12, tensor_io: 13 } }
+  broadcast: { offset: 0, dbs: { client_broadcast: 0, internal_broadcast: 1, io_broadcast: 2 } },
+  memcache: { offset: 4, dbs: { acl_cache: 4, model_cache: 5, room_cache: 6, tensor_cache: 7, io_cache: 8 } },
+  queue: { offset: 10, dbs: { search_queue: 10, task_queue: 11, io_queue: 12  } },
+  vector: { offset: 14, dbs: { db_tensor: 14, io_tensor: 15 } }
 }
 
 export const DEFAULT_CLIENT_OPTIONS: RedisOptions = {
