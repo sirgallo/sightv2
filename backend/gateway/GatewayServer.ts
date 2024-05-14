@@ -1,7 +1,7 @@
 import { ApplicableSystems } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
-import { SightMongoProvider } from '../db/SightProvider.js';
+import { Connection } from '../common/Connection.js';
 
 import { AccountProvider } from './providers/AccountProvider.js';
 import { AuthProvider } from './providers/AuthProvider.js';
@@ -30,9 +30,7 @@ export class GatewayServer extends Server<ApplicableSystems> {
   async initService(): Promise<boolean> {
     this.zLog.info(`${this.name} starting...`);
 
-    const sightDb = new SightMongoProvider();
-    await sightDb.createNewConnection();
-
+    const sightDb = await Connection.mongo()
     this.zLog.info('connection to sightdb success');
     
     const accountProvider = new AccountProvider(sightDb);

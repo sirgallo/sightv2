@@ -5,7 +5,7 @@ import { SightMongoProvider } from '../../db/SightProvider.js';
 import { PublisherProvider } from '../../broadcast/providers/PublisherProvider.js';
 import { BroadcastRoomConnect } from '../../broadcast/types/Broadcast.js';
 import { AuthProvider } from '../../gateway/providers/AuthProvider.js'
-import { SightIOConnect } from '../../io/sight.io.connect.js';
+import { SightIOConnection } from '../../io/sight.io.connect.js';
 import { SightIORunner, sightIORunner } from '../../io/sight.io.runner.js';
 import { AuthIOData } from '../../io/data/auth.sight.io.data.js';
 import { RoomIOData } from '../../io/data/room.sight.io.data.js';
@@ -15,11 +15,10 @@ class PubIORunner extends SightIORunner<boolean> {
   constructor() { super() }
 
   async runIO(): Promise<boolean> {
-    const sightDb = SightIOConnect.getMongo();
-    await sightDb.createNewConnection();
+    const sightDb = await SightIOConnection.mongo();
     await this.prepareMockAuthData(sightDb);
 
-    const publisher = SightIOConnect.getPublisher();
+    const publisher = SightIOConnection.publisher();
     await this.connectAndPublish(publisher, sightDb);
 
     return true;

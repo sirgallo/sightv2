@@ -5,7 +5,7 @@ import { SightMongoProvider } from '../../db/SightProvider.js';
 import { SubscriberProvider } from '../../broadcast/providers/SubscriberProvider.js';
 import { BroadcastRoomData } from '../../broadcast/types/Broadcast.js';
 import { AuthProvider } from '../../gateway/providers/AuthProvider.js'
-import { SightIOConnect } from '../../io/sight.io.connect.js';
+import { SightIOConnection } from '../../io/sight.io.connect.js';
 import { SightIORunner, sightIORunner } from '../../io/sight.io.runner.js';
 import { AuthIOData } from '../../io/data/auth.sight.io.data.js';
 import { MockRoomDataPayload, RoomIOData } from '../../io/data/room.sight.io.data.js';
@@ -15,11 +15,10 @@ class SubIORunner extends SightIORunner<boolean> {
   constructor() { super() }
 
   async runIO(): Promise<boolean> {
-    const sightDb = SightIOConnect.getMongo();
-    await sightDb.createNewConnection();
+    const sightDb = await SightIOConnection.mongo();
     await this.prepareMockAuthData(sightDb);
 
-    const subscriber = SightIOConnect.getSubscriber('DATA');
+    const subscriber = SightIOConnection.subscriber('DATA');
     await this.connectAndSubscribe(subscriber, sightDb);
 
     return true;

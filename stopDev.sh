@@ -2,10 +2,10 @@
 
 readonly truthyInput="input should be yes or no"
 
-echo "should this action remove containers? (yes or no):"
-read removeServices
+echo "remove or stop services?: (remove or stop)"
+read action
 
-if [ "$removeServices" == "yes" ]
+if [ "$action" == "remove" ]
 then
   echo "removing services and their underlying containers..."
 
@@ -47,7 +47,7 @@ then
   else
     echo "invalid input for database"
   fi
-elif [ "$removeServices" == "no" ]
+elif [ "$action" == "stop" ]
 then
   echo "stopping services...can be restarted"
   
@@ -90,5 +90,5 @@ then
     echo "invalid input for database"
   fi
 else
-  echo truthyInput
+  echo "input should be build or restart"
 fi

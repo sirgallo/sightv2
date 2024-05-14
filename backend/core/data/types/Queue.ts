@@ -9,6 +9,6 @@ export interface QueueOpts {
 }
 
 export type BPOPResp = [
-  string,          // queue name
-  string           // element
+  string, // queue name
+  string // element
 ];

@@ -41,7 +41,6 @@ export class BroadcastProvider {
     socket.on(broadcastEventMap.JOIN, async (opts: BroadcastRoomConnect) => {
       try { // map the incoming socket id to the room - socket map and join the db
         const { verified, payload } = await this.checkAuth(opts.token); // check incoming auth token
-
         if (! verified) throw new Error('incoming user connection did not pass auth verification');
         if (opts.roomType === 'org' && opts.roomId !== payload.user.orgId) throw new Error('incoming user is not in room organization');
 
@@ -61,12 +60,13 @@ export class BroadcastProvider {
         socket.join(db);
       } catch (err) {
         socket.emit(broadcastEventMap.ERROR, opts.roomId, `authentication failed for socket id: ${socket.id}`);
+        throw err;
       }
     });
   
     socket.on(broadcastEventMap.DATA, async (msg: BroadcastRoomData<T>) => { // emits to all socket ids mapped to a particular room in the request payload
+      const { roomId, event, payload } = msg;
       try {
-        const { roomId, event, payload } = msg;
         const roomMetadata: { socketIds: string[] } = await this.__memcache.hgetall(roomId) ?? { socketIds: [] };
         
         const updatedSocketIds: string[] = [];
@@ -85,6 +85,7 @@ export class BroadcastProvider {
           } else { 
             const newToken = authPayload.payload.newToken;
             if (newToken) socket.to(socketId).emit(broadcastEventMap.REFRESH, newToken);
+
             socket.to(socketId).emit(event, payload); 
             updatedSocketIds.push(socketId);
           }
@@ -92,7 +93,7 @@ export class BroadcastProvider {
 
         await this.__memcache.hset({ key: roomId, value: updatedSocketIds });
       } catch (err) {
-        this.__zLog.error(`socket data error: ${NodeUtil.extractErrorMessage(err)}`);
+        socket.emit(broadcastEventMap.ERROR, roomId, `socket data error for socket id: ${socket.id}`);
         throw err;
       }
     });

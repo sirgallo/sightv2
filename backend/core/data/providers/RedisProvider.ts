@@ -2,7 +2,7 @@ import { Cluster, Redis, ClusterOptions, RedisOptions, ClusterNode } from 'iored
 
 import { envLoader } from '../../../common/EnvLoader.js';
 import { 
-  ClientOpts, RedisDb, RedisService,
+  ClientOpts, RedisService, RedisDb,
   REDIS_SERVICE_REGISTRY, DEFAULT_CLUSTER_OPTIONS, DEFAULT_CLIENT_OPTIONS 
 } from '../types/Redis.js';
 

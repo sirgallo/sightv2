@@ -1,7 +1,7 @@
 import { ApplicableSystems } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
-import { ETCDProvider } from '../core/replication/EtcdProvider.js';
+import { Connection } from '../common/Connection.js';
 import { ProcessorSchedulerProvider } from './providers/ProcessorSchedulerProvider.js';
 
 
@@ -16,7 +16,7 @@ export class TaskRunnerServer extends Server<ApplicableSystems> {
   }
 
   async startEventListeners(): Promise<void> {
-    const etcdProvider = new ETCDProvider();
+    const etcdProvider = Connection.etcd();
     const schedulerProvider = new ProcessorSchedulerProvider();
 
     try {

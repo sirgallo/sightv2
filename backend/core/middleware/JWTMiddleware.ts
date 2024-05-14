@@ -4,6 +4,7 @@ const { sign, verify } = jsonwebtoken;
 
 import { LogProvider } from '../log/LogProvider.js';
 import { NodeUtil } from '../utils/Node.js';
+import { Connection } from '../../common/Connection.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
 import { IToken, IUser } from '../../db/models/User.js';
 
@@ -40,9 +41,7 @@ export class JWTMiddleware {
   async verify(token: string, opts?: { ignoreExpiration: true }): Promise<JWTVerifyPayload> {
     const { secret } = this.opts;
     const verifyWrapper = () => verify(token, secret, opts);
-
-    const sightDb = new SightMongoProvider();
-    await sightDb.createNewConnection();
+    const sightDb = await Connection.mongo();
     
     try {
       const decoded = await NodeUtil.wrapAsync(verifyWrapper);

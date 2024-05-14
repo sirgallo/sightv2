@@ -2,7 +2,8 @@ import { BaseRoute } from '../../server/types/RouteMappings';
 
 
 type TaskRoute = 'task';
-type TaskRouteSubRoutes = 'deploy'
+type TaskRouteSubRoutes = 
+  'deploy'
   | 'paginate' 
   | 'details'
   | 'destroy' 

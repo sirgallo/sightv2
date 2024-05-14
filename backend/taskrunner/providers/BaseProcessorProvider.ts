@@ -1,8 +1,8 @@
 import { ETCDProvider } from '../../core/replication/EtcdProvider.js';
 import { LogProvider } from '../../core/log/LogProvider.js';
+import { Connection } from '../../common/Connection.js';
 import { AuditProvider } from '../../common/etcd/AuditProvider.js';
 import { AuditModel } from '../../common/etcd/models/Audit.js';
-import { envLoader } from '../../common/EnvLoader.js';
 
 
 export abstract class BaseProcessorProvider {
@@ -19,7 +19,7 @@ export abstract class BaseProcessorProvider {
   abstract process<T>(): Promise<AuditModel<T>['ValueType']['action']>;
 
   private init() {
-    this.etcProvider = new ETCDProvider();
+    this.etcProvider = Connection.etcd();
     this.auditProvider = new AuditProvider(this.etcProvider);
     this.initInternalProviders();
   }

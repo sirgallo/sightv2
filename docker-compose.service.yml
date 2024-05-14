@@ -33,8 +33,6 @@ x-variables:
           memory: 250M
     volumes:
       - $HOME/sight/certs/haproxy:/certs
-    networks:
-      api_layer:
     depends_on:
       - sight_broadcast_0
       - sight_broadcast_1
@@ -50,9 +48,9 @@ x-variables:
       dockerfile: ./backend/broadcast/Dockerfile
     ports:
       - '1000'
-      - '9997'
-      - '9998'
-      - '9999'
+      - '1001'
+      - '1002'
+      - '1003'
     healthcheck:
       test: curl --fail http://localhost:1000/broadcast/poll || kill 1
       interval: 30s
@@ -83,6 +81,8 @@ services:
       - $HOME/sight/certs/haproxy:/certs
     ports: 
       - '443:443'
+    networks:
+      api_layer:
   sight_io_proxy: 
     <<: *common_proxy_settings
     container_name: sight_io_proxy
@@ -93,6 +93,9 @@ services:
       - $HOME/sight/certs/haproxy:/certs
     ports: 
       - '1010:443'
+    networks:
+      api_layer:
+      data_layer:
   sight_broadcast_0:
     <<: *common_broadcast_settings
     container_name: sight_broadcast_0

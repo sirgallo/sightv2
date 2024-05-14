@@ -14,7 +14,6 @@ then
   then
     docker compose -f docker-compose.db.yml up --build -d
     docker exec -it sight_db_replica_0 /scripts/rs-init.sh
-    sleep 10
   elif [ "$database" == "no" ]
   then
     echo "database not selected for build"
@@ -28,7 +27,6 @@ then
   if [ "$data" == "yes" ]
   then
     docker compose -f docker-compose.data.yml up --build -d
-    sleep 10
   elif [ "$data" == "no" ]
   then
     echo "data layer not selected for build"
@@ -58,7 +56,6 @@ then
   if [ "$database" == "yes" ]
   then
     docker compose -f docker-compose.db.yml start -d
-    sleep 10
   elif [ "$database" == "no" ]
   then
     echo "database not selected for restart"

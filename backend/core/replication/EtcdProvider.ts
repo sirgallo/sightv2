@@ -6,7 +6,6 @@ const { transform } = lodash;
 
 import { LogProvider } from '../log/LogProvider.js';
 import { NodeUtil } from '../../core/utils/Node.js';
-import { envLoader } from '../../common/EnvLoader.js';
 import { EtcdModel, ValueSerializer } from './EtcdModel.js';
 import { 
   ElectionEvent, ElectionListener, WatchEvent, WatchListener, InitWatchOpts, WatchEventData, CreateLeaseOptions, GetAllResponse,
@@ -19,7 +18,7 @@ export class ETCDProvider extends EventEmitter {
   private client: Etcd3;
   private zLog = new LogProvider(ETCDProvider.name);
 
-  constructor(private opts = ETCD_DEFAULT_OPTS) { 
+  constructor(private opts: IOptions) { 
     super();
     this.client = new Etcd3(this.opts);
   }
@@ -164,20 +163,3 @@ export class ETCDProvider extends EventEmitter {
   private emitElectionEvent = (event: ElectionEvent, elected: boolean) => super.emit(event, elected);
   private emitMutatedKeyEvent = (event: WatchEvent, data: WatchEventData<typeof event>) => super.emit(event, data);
 }
-
-
-type CertPath = `${string}/sight/certs`
-
-export const ETCD_DEFAULT_OPTS: IOptions = (() => {
-  const hosts: string[] = ((): string[] => {
-    const listAsString = envLoader.SIGHT_ETCD_HOSTS;
-    return listAsString?.split(',') ?? null;
-  })();
-
-  return { 
-    hosts, 
-    /* credentials: {
-      rootCertificate: readFileSync(join(homedir(), '/solt/certs/etcd'))
-    } */
-  };
-})();

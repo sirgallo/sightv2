@@ -27,21 +27,18 @@ export abstract class ClientProvider {
 
     this.__socket.on(broadcastEventMap.REFRESH, (token: string) => {
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db, token };
-
       this.__socket.emit(broadcastEventMap.LEAVE);
       this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
     });
 
     this.__socket.io.on(clientEventMap.reconnect_attempt, async attempt => {
       this.zLog.debug(`${clientEventMap.reconnect_attempt}, ${attempt}`);
-      
       const timeout = BackoffUtil.strategy(attempt, this.__backoffTimeout);
       await NodeUtil.sleep(timeout);
     });
     
     this.__socket.io.on(clientEventMap.reconnect, () => {
       this.zLog.debug(`reconnect:${this.__socket.id}`);
-
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db };
       this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
     });
@@ -53,16 +50,16 @@ export abstract class ClientProvider {
     });
   }
 
-  private __initialize() { 
-    this.__socket = io(this.__endpoint);
-  }
-
   protected clientOn<T>(event: BroadcastEvent, listener: (msg: BroadcastRoomData<T>) => void) {
     this.__socket.emit(event, listener);
   }
 
   protected clientEmit<T>(event: BroadcastEvent, msg: BroadcastRoomData<T>) {
     this.__socket.emit(event, msg);
+  }
+
+  private __initialize() { 
+    this.__socket = io(this.__endpoint);
   }
 
   private __endpointResolver = (opts?: { protocol: Protocol, endpoint: string, port?: number }) => {

@@ -9,6 +9,7 @@ type EnvironementKey =
   | 'JWT_REFRESH_TIMEOUT'
   | 'PASSWORD_SALT_ROUNDS'
   | 'SIGHT_DB_HOSTS'
+  | 'SIGHT_DB_DEFAULT_PORT'
   | 'SIGHT_DB_USER'
   | 'SIGHT_DB_PASS'
   | 'SIGHT_DB_REPLICA_SET'
@@ -32,6 +33,7 @@ type EnvValue<T extends EnvironementKey> =
     'JWT_TIMEOUT'
     | 'JWT_REFRESH_TIMEOUT'
     | 'PASSWORD_SALT_ROUNDS'
+    | 'SIGHT_DB_DEFAULT_PORT'
     | 'SIGHT_REDIS_PORT'
   ? number
   : T extends
@@ -65,6 +67,7 @@ const envValueValidator = <T extends EnvironementKey>(envKey: T): EnvValue<T> =>
   if (envKey === 'JWT_REFRESH_TIMEOUT') return parseInt(validateValue('86400')) as EnvValue<T>;
   if (envKey === 'PASSWORD_SALT_ROUNDS') return parseInt(validateValue('10')) as EnvValue<T>;
   if (envKey === 'SIGHT_DB_HOSTS') return (validateValue('sight_db_replica_0:27017,sight_db_replica_1:27017,sight_db_replica_2:27017')) as EnvValue<T>;
+  if (envKey === 'SIGHT_DB_DEFAULT_PORT') return 27017 as EnvValue<T>;
   if (envKey === 'SIGHT_DB_USER') return (validateValue('sight_dev_user')) as EnvValue<T>;
   if (envKey === 'SIGHT_DB_PASS') return (validateValue('sight_dev_pass_1234')) as EnvValue<T>;
   if (envKey === 'SIGHT_DB_REPLICA_SET') return (validateValue('sight_replication_set')) as EnvValue<T>;
@@ -87,6 +90,7 @@ export const envLoader: { [envKey in EnvironementKey]: EnvValue<envKey> } = {
   'JWT_REFRESH_TIMEOUT': envValueValidator('JWT_REFRESH_TIMEOUT'),
   'PASSWORD_SALT_ROUNDS': envValueValidator('PASSWORD_SALT_ROUNDS'),
   'SIGHT_DB_HOSTS': envValueValidator('SIGHT_DB_HOSTS'),
+  'SIGHT_DB_DEFAULT_PORT': envValueValidator('SIGHT_DB_DEFAULT_PORT'),
   'SIGHT_DB_USER': envValueValidator('SIGHT_DB_USER'),
   'SIGHT_DB_PASS': envValueValidator('SIGHT_DB_PASS'),
   'SIGHT_DB_REPLICA_SET': envValueValidator('SIGHT_DB_REPLICA_SET'),

@@ -3,7 +3,7 @@ import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 import { ApplicableSystems } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
-import { ETCDProvider } from '../core/replication/EtcdProvider.js';
+import { Connection } from '../common/Connection.js';
 import { envLoader } from '../common/EnvLoader.js';
 import { BroadcastProvider } from './providers/BroadcastProvider.js';
 
@@ -19,14 +19,12 @@ export class BroadcastServer extends Server<ApplicableSystems> {
   }
 
   async startEventListeners(): Promise<void> {
-    const etcdProvider = new ETCDProvider();
+    const etcdProvider = Connection.etcd();
     etcdProvider.startElection(BroadcastServer.name);
     etcdProvider.onElection('elected', async elected => {
       try {
-        if (elected) {
-          if (envLoader.SIGHT_REDIS_DEPLOYMENT === 'cluster') BroadcastServerProcessor.startCluster();
-          else BroadcastServerProcessor.startClient();
-        }
+        if (elected && envLoader.SIGHT_REDIS_DEPLOYMENT === 'cluster') BroadcastServerProcessor.startCluster();
+        if (elected && envLoader.SIGHT_REDIS_DEPLOYMENT !== 'cluster') BroadcastServerProcessor.startClient();
       } catch (err) { 
         this.zLog.error(err);
         process.exit(1);

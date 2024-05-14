@@ -7,6 +7,8 @@ x-variables:
           memory: 500M
         reservations:
           memory: 250M
+    ports:
+      - '27017'
     networks:
       data_layer:
     restart: always
@@ -18,8 +20,6 @@ services:
     volumes:
       - ./db/rs-init.sh:/scripts/rs-init.sh
       - $HOME/sight/sight_db_replica_0:/data/db
-    ports:
-      - '27018:27017'
     depends_on:
       - sight_db_replica_1
       - sight_db_replica_2
@@ -32,16 +32,12 @@ services:
     container_name: sight_db_replica_1
     volumes:
       - $HOME/sight/sight_db_replica_1:/data/db
-    ports:
-      - '27019:27017'
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
   sight_db_replica_2:
     <<: *common_mongo_settings
     container_name: sight_db_replica_2
     volumes:
       - $HOME/sight/sight_db_replica_2:/data/db
-    ports:
-      - '27020:27017'
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
 
 networks:

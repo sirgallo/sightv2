@@ -44,8 +44,7 @@ export type VectorDb = typeof vectorDbs[number];
 
 export type RedisDb = `${RedisService}:${BroadcastDb | MemcacheDb | QueueDb | VectorDb}`;
 
-
-type ServiceDbMap<T extends RedisService> = 
+export type ServiceDbMap<T extends RedisService> = 
   T extends 'broadcast' ? BroadcastDb
   : T extends 'memcache' ? MemcacheDb
   : T extends 'queue' ? QueueDb

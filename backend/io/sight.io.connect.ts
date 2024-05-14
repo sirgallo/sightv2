@@ -1,14 +1,10 @@
 import { hostname } from 'os';
-import { ClusterNode } from 'ioredis';
 
 import { LogProvider } from '../core/log/LogProvider.js';
-import { ETCDProvider } from '../core/replication/EtcdProvider.js';
 import { RedisProvider } from '../core/data/providers/RedisProvider.js';
-import { MemcacheProvider } from '../core/data/providers/MemcacheProvider.js';
-import { QueueProvider } from '../core/data/providers/QueueProvider.js';
 import { DEFAULT_CLUSTER_OPTIONS } from '../core/data/types/Redis.js';
-import { envLoader } from '../common/EnvLoader.js';
-import { SightMongoProvider } from '../db/SightProvider.js';
+import { Connection } from '../common/Connection.js';
+import { Profile } from '../common/Profile.js';
 import { PublisherProvider } from '../broadcast/providers/PublisherProvider.js';
 import { SubscriberProvider } from '../broadcast/providers/SubscriberProvider.js'
 import { BroadcastEvent, BroadcastRoomData } from '../broadcast/types/Broadcast.js';
@@ -16,60 +12,44 @@ import { MockRoomDataPayload } from './data/room.sight.io.data.js';
 import { DEFAULT_IO_BROADCAST_PORT } from './sight.io.types.js';
 
 
-export class SightIOConnect {
+export class SightIOConnection {
   static getRedis(cluster = true) {
-    const client = new RedisProvider({ nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS });
+    const client = new RedisProvider({ nodes: Profile.redisCluster(), cluster: DEFAULT_CLUSTER_OPTIONS });
     if (cluster) return client.getCluster({ service: 'memcache', db: 'io_cache' });
     return client.getClient({ service: 'memcache', db: 'io_cache' });
   }
 
-  static getMemcache(prefix: string) {
-    return new MemcacheProvider({
-      db: 'io_cache', prefix, expirationInSec: 10000,
-      connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS }
-    })
+  static memcache(prefix: string) {
+    return Connection.memcache({ db: 'io_cache', prefix })
   }
 
-  static getQueue() {
-    return new QueueProvider({
-      db: 'io_queue',
-      connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS }
-    });
+  static queue() {
+    return Connection.queue('io_queue')
   }
 
-  static getPublisher() {
+  static publisher() {
     return new PublisherProvider({
       db: 'io_broadcast', keepAlive: true,
-      connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS },
+      connOpts: { nodes: Profile.redisCluster(), cluster: DEFAULT_CLUSTER_OPTIONS },
       conn: { protocol: 'https', endpoint: hostname(), port: DEFAULT_IO_BROADCAST_PORT },
-    }, new LogProvider(`${SightIOConnect.name}:${this.getPublisher.name}`));
+    }, new LogProvider(`${SightIOConnection.name}:${this.publisher.name}`));
   }
 
-  static getSubscriber(
+  static subscriber(
     event: BroadcastEvent
   ): SubscriberProvider<BroadcastRoomData<MockRoomDataPayload>> {
     return new SubscriberProvider({
       db: 'io_broadcast', event, keepAlive: true,
-      connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS },
+      connOpts: { nodes: Profile.redisCluster(), cluster: DEFAULT_CLUSTER_OPTIONS },
       conn: { protocol: 'https', endpoint: hostname(), port: DEFAULT_IO_BROADCAST_PORT }
-    }, new LogProvider(`${SightIOConnect.name}:${this.getSubscriber.name}`));
+    }, new LogProvider(`${SightIOConnection.name}:${this.subscriber.name}`));
   }
 
-  static getEtcd() {
-    return new ETCDProvider();
+  static etcd() {
+    return Connection.etcd();
   }
 
-  static getMongo() {
-    return new SightMongoProvider();
+  static async mongo() {
+    return await Connection.mongo();
   }
-}
-
-
-const defaultClusterNodes = (): ClusterNode[] => {
-  const listAsString = envLoader.SIGHT_REDIS_HOSTS;
-  const port = envLoader.SIGHT_REDIS_PORT;
-
-  return listAsString?.split(',').map((host: string): ClusterNode => {
-    return { host: host.trim(), port }
-  })
 }

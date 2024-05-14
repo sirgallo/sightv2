@@ -17,7 +17,6 @@ export class ModelProvider implements ModelEndpoints {
   async generate<T extends RelationshipType>(opts: ModelRequest<'generate', T>): Promise<ModelResponse<'generate', T>> {
     try {
       let resp: ModelResponse<'generate', T>;
-
       const session = await this.sightDb.conn.startSession();
       session.startTransaction();
 

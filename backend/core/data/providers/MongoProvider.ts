@@ -1,7 +1,7 @@
 import { createConnection, Connection, ClientSession } from 'mongoose';
 
 import { LogProvider } from '../../log/LogProvider.js';
-import { MongoInitOpts } from '../types/Mongo.js';
+import { MongoOpts } from '../types/Mongo.js';
 import { NodeUtil } from '../../utils/Node.js';
 import { Profile } from '../../../common/Profile.js';
 
@@ -17,17 +17,13 @@ export abstract class MongoProvider {
 
   get conn() { return this.__conn; }
 
-  async createNewConnection(opts?: MongoInitOpts) {
+  async createNewConnection(opts?: MongoOpts) {
     try {
-      const connectionString = opts?.connection?.fullUri 
-        ? opts.connection.fullUri
-        : Profile.getMongoConnectionString();
-      
-      const connectionOpts = opts?.overrideOpts 
-        ? opts.overrideOpts
+      const connectionOpts = opts?.override 
+        ? opts.override
         : { autoIndex: true, autoCreate: true, maxPoolSize: 100, useUnifiedTopology: true, useNewUrlParser: true };
       
-      this.__conn = await createConnection(connectionString, connectionOpts).asPromise();
+      this.__conn = await createConnection(Profile.mongoConnectionString(opts?.io), connectionOpts).asPromise();
       this.initModels();
     } catch (err) {
       console.log('error:', err);
