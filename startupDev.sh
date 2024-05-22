@@ -39,7 +39,7 @@ then
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.service.yml up --build
+    docker compose -f docker-compose.io.yml up --build -d
   elif [ "$services" == "no" ]
   then
     echo "service layer not selected for build"
@@ -81,7 +81,7 @@ then
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.service.yml start
+    docker compose -f docker-compose.io.yml start -d
   elif [ "$services" == "no" ]
   then
     echo "service layer not selected for restart"

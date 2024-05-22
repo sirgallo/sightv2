@@ -14,7 +14,7 @@ then
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.service.yml down
+    docker compose -f docker-compose.io.yml down
   elif [ "$services" == "no" ]
   then
     echo "service layer not selected for removal"
@@ -56,7 +56,7 @@ then
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.service.yml stop
+    docker compose -f docker-compose.io.yml stop
   elif [ "$services" == "no" ]
   then
     echo "service layer not selected for stop"

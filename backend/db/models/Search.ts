@@ -4,6 +4,9 @@ import { Schema, Document } from 'mongoose';
 export const SearchCollectionName = 'search';
 
 
+//======================== mongo search interfaces
+
+
 export interface ISearch {
   searchId: string;
   modelId: string;
@@ -19,7 +22,7 @@ export interface ISearch {
 }
 
 
-//======================== mongo specific schemas
+//======================== mongo search schemas
 
 
 export interface SearchDocument extends ISearch, Document {}
@@ -37,7 +40,7 @@ export const SearchSchema: Schema<SearchDocument> = new Schema({
 });
 
 
-//======================== indexes
+//======================== mongo search indexes
 
 
 SearchSchema.index({ searchId: 1 });

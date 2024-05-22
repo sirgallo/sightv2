@@ -53,6 +53,10 @@ interface __object<MDL extends ModelObjectType, REL extends RelationshipType | u
   updatedAt?: Date; // injected
 }
 
+
+//======================== mongo model interfaces
+
+
 export interface IEntity extends __object<'entity'> {}
 export interface IRelationship<REL extends RelationshipType> extends __object<'relationship', REL> {}
 
@@ -65,7 +69,9 @@ export interface IModel {
   createdAt?: Date; // injected
   updatedAt?: Date; // injected
 }
-//======================== mongo specific schemas
+
+
+//======================== mongo model schemas
 
 
 export interface EntityDocument extends IEntity, Document {}
@@ -110,7 +116,7 @@ export const ModelSchema: Schema<ModelDocument> = new Schema({
 });
 
 
-//======================== indexes
+//======================== mongo model indexes
 
 
 ModelSchema.index({ modelId: 1 });

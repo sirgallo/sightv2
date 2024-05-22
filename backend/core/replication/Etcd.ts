@@ -6,6 +6,9 @@ import { Etcd3PrefixedKey, EtcdModel } from './EtcdModel.js';
 export type ElectionEvent = 'elected';
 export type ElectionListener = (elected: boolean) => void;
 
+export type ReplicationEvent = 'change';
+export type ReplicationListenr = (elected: string) => void;
+
 export type WatchEvent = 'data' | 'delete' | 'put';
 export type WatchListener<EVT extends WatchEvent> = 
   EVT extends 'data' ? (watchResp: IWatchResponse) => void : (keyVal: IKeyValue) => void;
@@ -41,5 +44,3 @@ export type GetAllResponse<V, K extends string, PRF = unknown> = { [key in keyof
 
 export const ELECTION_EVENTS: { [event in ElectionEvent]: event } = { elected: 'elected' };
 export const WATCH_EVENTS: { [event in WatchEvent]: event } = { data: 'data', delete: 'delete', put: 'put' };
-
-export const ELECTION_ERROR_TIMEOUT_IN_MS = 5000;

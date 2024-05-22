@@ -1,4 +1,4 @@
-import { ApplicableSystems } from '../ServerConfigurations.js';
+import { ApplicableSystem } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
 import { Connection } from '../common/Connection.js';
@@ -7,8 +7,8 @@ import { SearchRoute } from './routes/SearchRoute.js';
 import { searchRouteMapping } from './configs/SearchRouteMapping.js';
 
 
-export class SearchServer extends Server<ApplicableSystems> {
-  constructor(opts: ServerConfiguration<ApplicableSystems>) { 
+export class SearchServer extends Server<ApplicableSystem> {
+  constructor(opts: ServerConfiguration<ApplicableSystem>) { 
     super(opts); 
   }
 

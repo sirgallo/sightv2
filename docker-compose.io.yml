@@ -64,18 +64,20 @@ x-variables:
       retries: 3
 
 services:
-  sight_service_proxy: 
+  sight_io_proxy: 
     <<: *common_proxy_settings
-    container_name: sight_service_proxy
+    container_name: sight_io_proxy
     build:
       context: .
-      dockerfile: ./lb/Dockerfile.service
+      dockerfile: ./lb/Dockerfile.io
     volumes:
       - $HOME/sight/certs/haproxy:/certs
     ports: 
       - '443:443'
+      - '27017:27017'
     networks:
       api_layer:
+      data_layer:
   sight_broadcast_0:
     <<: *common_broadcast_settings
     hostname: sight_broadcast_0

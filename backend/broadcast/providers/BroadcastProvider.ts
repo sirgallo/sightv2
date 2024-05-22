@@ -19,7 +19,9 @@ export class BroadcastProvider {
   private __jwtMiddleware = new JWTMiddleware({ secret: envLoader.JWT_SECRET, timespanInSec: envLoader.JWT_TIMEOUT });
   private __zLog = new LogProvider(BroadcastProvider.name);
 
-  constructor(opts: BroadcastOpts) { this.initialize(opts); }
+  constructor(opts: BroadcastOpts) {
+    this.initialize(opts);
+  }
 
   listen() { // for each connector, listen for new socket connections and determine how to add to rooms
     this.__connectorMap.forEach((io: Server, db: BroadcastDb) => {

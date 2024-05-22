@@ -6,6 +6,10 @@ export const SourceCollectionName = 'source';
 
 export type ApplicableVendors = 'mariaDb' | 'mongoDb' | 'galaxy'
 
+
+//======================== mongo source interfaces
+
+
 export interface ISource {
   sourceId: string;
   orgId: string;
@@ -21,7 +25,7 @@ export interface ISource {
 }
 
 
-//======================== mongo specific schemas
+//======================== mongo source schemas
 
 
 export interface SourceDocument extends ISource, Document {}
@@ -40,7 +44,7 @@ export const SourceSchema: Schema<SourceDocument> = new Schema({
 });
 
 
-//======================== indexes
+//======================== mongo source indexes
 
 
 SourceSchema.index({ sourceId: 1 });

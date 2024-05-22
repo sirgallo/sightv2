@@ -28,11 +28,6 @@ export class Profile {
       return listAsString?.split(',') ?? null;
     })();
   
-    return { 
-      hosts, 
-      /* credentials: {
-        rootCertificate: readFileSync(join(homedir(), '/solt/certs/etcd'))
-      } */
-    };
+    return { hosts };
   }
 }

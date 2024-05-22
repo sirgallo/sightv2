@@ -1,7 +1,5 @@
 import { Schema, Document } from 'mongoose';
 
-import { UserRole } from './ACL.js';
-
 
 export const UserCollectionName = 'user';
 export const TokenCollectionName = 'token';
@@ -9,7 +7,8 @@ export const TokenCollectionName = 'token';
 
 export type Subscription = 'hosted' | 'organization' | 'individual' | 'trial';
 
-//======================== mongo user interfaces
+
+//======================== mongo org interfaces
 
 
 export interface IOrg {
@@ -22,7 +21,7 @@ export interface IOrg {
 }
 
 
-//======================== mongo user schemas
+//======================== mongo org schemas
 
 
 export interface OrgDocument extends IOrg, Document {} // need to extend mongo document for schema to include all mongo document fields
@@ -39,7 +38,7 @@ export const OrgSchema: Schema<OrgDocument> = new Schema({
 });
 
 
-//======================== mongo user indexes
+//======================== mongo org indexes
 
 
 OrgSchema.index({ orgId: 1 });

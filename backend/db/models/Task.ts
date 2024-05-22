@@ -120,7 +120,7 @@ export const TaskHistorySchema: Schema<TaskHistoryDocument> = new Schema({
 });
 
 
-//======================== mongo task indexes indexes
+//======================== mongo task indexes
 
 
 TaskSchema.index({ taskId: 1 });

@@ -21,6 +21,9 @@ export type PermissionedUser = typeof permissionedUserList[number];
 export type UserRole = Admin | PermissionedUser;
 
 
+//======================== mongo acl interfaces
+
+
 export interface IACL {
   aclId: string;
   orgId: string;
@@ -28,7 +31,7 @@ export interface IACL {
 }
 
 
-//======================== mongo specific schemas
+//======================== mongo acl schemas
 
 
 export interface ACLDocument extends IACL, Document {}
@@ -44,7 +47,7 @@ export const ACLSchema: Schema<ACLDocument> = new Schema({
 });
 
 
-//======================== indexes
+//======================== mongo acl indexes
 
 
 ACLSchema.index({ aclId: 1 });

@@ -2,7 +2,7 @@ import express from 'express';
 import { Application, Request, Response, NextFunction, json, static as eStatic, urlencoded } from 'express';
 import cluster from 'cluster';
 import { config } from 'dotenv';
-import { cpus, networkInterfaces } from 'os';
+import { cpus, hostname, networkInterfaces } from 'os';
 import createError, { HttpError } from 'http-errors';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
@@ -27,36 +27,37 @@ import { routeMappings } from './configs/RouteMappings.js';
 */
 config({ path: '.env' });
 export abstract class Server<T extends string> {
-  protected _name: string;
-
   protected app: Application;
   protected root: `/${string}`;
-  protected _ip: string;
   protected port: number;
   protected version: string;
   protected staticFilesDir: string = 'public';
-
   protected numOfCpus: number = cpus().length;
-  protected _routes: Route<string, unknown>[];
   protected zLog: LogProvider;
 
+  private __hostname = hostname();
+  private __ip: string;
+  private __name: string;
+  private __routes: Route<string, unknown>[];
+
   constructor(opts: ServerConfiguration<T>) {
-    this._name = opts.name;
-    this.zLog = new LogProvider(this._name);
+    this.__name = opts.name;
+    this.zLog = new LogProvider(this.__name);
 
     this.port = opts.port;
     this.version = opts.version;
     this.numOfCpus = opts.numOfCpus;
     this.root = opts.root;
 
-    this._routes = [ new PollRoute(opts.root, routeMappings.poll.name) ];
+    this.__routes = [ new PollRoute(opts.root, routeMappings.poll.name) ];
     if (opts?.staticFilesDir) this.staticFilesDir = opts.staticFilesDir;
   }
 
-  get name() { return this._name; }
-  get ip() { return this._ip; }
-  get routes() { return this._routes; }
-  set routes(routes: Route<string, unknown>[]) { this._routes = this.routes.concat(routes); }
+  get hostname() { return this.__hostname; }
+  get ip() { return this.__ip; }
+  get name() { return this.__name; }
+  get routes() { return this.__routes; }
+  set routes(routes: Route<string, unknown>[]) { this.__routes = this.routes.concat(routes); }
 
   async startServer() {
     try {
@@ -123,18 +124,18 @@ export abstract class Server<T extends string> {
 
   private initRoutes() {
     try {
-      for (const route of this.routes) {
+      for (const route of this.__routes) {
         this.app.use(route.rootpath, route.router);
         this.zLog.info(`Route: ${route.rootpath} initialized on Worker ${process.pid}.`);
       }
 
-      this.app.use((_req: Request, _res: Response, next: NextFunction) => next(createError(404)));
-      this.app.use((err: HttpError, _req: Request, res: Response, _next: NextFunction) => res.status(err.status ?? 500).json({ error: err.message }));
+      this.app.use((__req: Request, __res: Response, next: NextFunction) => next(createError(404)));
+      this.app.use((err: HttpError, __req: Request, res: Response, __next: NextFunction) => res.status(err.status ?? 500).json({ error: err.message }));
     } catch (err) { throw Error(`error initializing routes => ${NodeUtil.extractErrorMessage(err as Error)}`); }
   }
 
   private setUpServer() {
-    this.app.listen(this.port, () => this.zLog.info(`server ${process.pid} @${this._ip} listening on port ${this.port}...`));
+    this.app.listen(this.port, () => this.zLog.info(`server ${process.pid} @${this.__ip} listening on port ${this.port}...`));
   }
 
   private setUpWorkers() {
@@ -143,7 +144,7 @@ export abstract class Server<T extends string> {
       f.on('message', message => this.zLog.debug(message));
     }
 
-    this.zLog.info(`server @${this._ip} setting up ${this.numOfCpus} cpus as workers.\n`);
+    this.zLog.info(`server @${this.__ip} setting up ${this.numOfCpus} cpus as workers.\n`);
     for (let cpu = 0; cpu < this.numOfCpus; cpu++) { fork(); }
 
     cluster.on('online', worker => this.zLog.info(`Worker ${worker.process.pid} is online.`));
@@ -156,7 +157,7 @@ export abstract class Server<T extends string> {
 
   private initIpAddress() {
     try {
-      this._ip = Object
+      this.__ip = Object
         .keys(networkInterfaces())
         .map(key => { if (/(eth[0-9]{1}|enp[0-9]{1}s[0-9]{1})/.test(key)) return networkInterfaces()[key][0].address; })
         .filter(el => el)[0];

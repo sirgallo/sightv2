@@ -3,7 +3,7 @@ import { UserRole } from '../../db/models/ACL.js';
 
 
 export class ACLMiddleware {  
-  private static zLog = new LogProvider(ACLMiddleware.name);
+  private static __zLog = new LogProvider(ACLMiddleware.name);
   
   static isEligible(roles: { incoming: UserRole, expected: UserRole }): boolean {
     if (roles.incoming === 'ADMIN') return true;

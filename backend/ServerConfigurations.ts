@@ -2,13 +2,13 @@ import { ServerConfiguration } from './server/types/ServerConfiguration.js';
 import { envLoader } from './common/EnvLoader.js';
 
 
-export type ApplicableSystems = 
+export type ApplicableSystem = 
   'broadcast'
   | 'gateway' 
   | 'search' 
   | 'taskrunner';
 
-export const serverConfigurations: { [server in ApplicableSystems]: ServerConfiguration<server> } = {
+export const serverConfigurations: { [server in ApplicableSystem]: ServerConfiguration<server> } = {
   broadcast: {
     root: '/broadcast',
     port: 1000,
@@ -40,7 +40,7 @@ export const serverConfigurations: { [server in ApplicableSystems]: ServerConfig
 };
 
 
-export const socketConfigurations: { [server in ApplicableSystems]?: { [service: string]: number } } = {
+export const socketConfigurations: { [server in ApplicableSystem]?: { [service: string]: number } } = {
   broadcast: {
     client_broadcast: 1001,
     internal_broadcast: 1002,

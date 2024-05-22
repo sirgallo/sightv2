@@ -50,6 +50,6 @@ export class SightIOConnection {
   }
 
   static async mongo() {
-    return await Connection.mongo();
+    return await Connection.mongo({ io: true });
   }
 }

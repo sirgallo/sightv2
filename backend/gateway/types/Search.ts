@@ -1,7 +1,7 @@
 import { ISearch } from '../../db/models/Search.js';
 
 
-export type SavedRequest<T extends keyof SavedEndpoints> = 
+export type SearchRequest<T extends keyof SearchEndpoints> = 
   T extends 'create'
   ? Pick<ISearch, 'modelId' | 'searchName' | 'query'>
   : T extends 'update'
@@ -10,11 +10,11 @@ export type SavedRequest<T extends keyof SavedEndpoints> =
   ? Pick<ISearch, 'searchId'>
   : never;
 
-export type SavedResponse = ISearch;
+export type SearchResponse = ISearch;
   
 
-export interface SavedEndpoints {
-  create: (opts: SavedRequest<'create'>) => Promise<SavedResponse>;
-  update: (opts: SavedRequest<'update'>) => Promise<SavedResponse>
-  delete: (opts: SavedRequest<'delete'>) => Promise<SavedResponse>;
+export interface SearchEndpoints {
+  create: (opts: SearchRequest<'create'>) => Promise<SearchResponse>;
+  update: (opts: SearchRequest<'update'>) => Promise<SearchResponse>
+  delete: (opts: SearchRequest<'delete'>) => Promise<SearchResponse>;
 }

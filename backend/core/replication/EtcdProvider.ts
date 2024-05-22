@@ -5,23 +5,29 @@ import lodash from 'lodash';
 const { transform } = lodash; 
 
 import { LogProvider } from '../log/LogProvider.js';
-import { NodeUtil } from '../../core/utils/Node.js';
+import { NodeUtil } from '../utils/Node.js';
+import { envLoader } from '../../common/EnvLoader.js';
 import { EtcdModel, ValueSerializer } from './EtcdModel.js';
 import { 
-  ElectionEvent, ElectionListener, WatchEvent, WatchListener, InitWatchOpts, WatchEventData, CreateLeaseOptions, GetAllResponse,
-  ELECTION_EVENTS, WATCH_EVENTS, ELECTION_ERROR_TIMEOUT_IN_MS, ETCDDataProcessingOpts
+  WatchEvent, WatchListener, InitWatchOpts, WatchEventData, CreateLeaseOptions, GetAllResponse,
+  WATCH_EVENTS, ETCDDataProcessingOpts,
+  ElectionEvent,
+  ElectionListener,
+  ELECTION_EVENTS
 } from './Etcd.js';
 
 
 export class ETCDProvider extends EventEmitter {
-  private hostname = hostname();
-  private client: Etcd3;
-  private zLog = new LogProvider(ETCDProvider.name);
+  private __hostname = hostname();
+  private __client: Etcd3;
+  private __zLog = new LogProvider(ETCDProvider.name);
 
-  constructor(private opts: IOptions) { 
+  constructor(private __opts: IOptions) { 
     super();
-    this.client = new Etcd3(this.opts);
+    this.__client = new Etcd3(this.__opts);
   }
+
+  get hostname() { return this.__hostname; }
 
   onElection = (event: ElectionEvent, listener: ElectionListener) => super.on(event, listener);
 
@@ -30,70 +36,70 @@ export class ETCDProvider extends EventEmitter {
   }
 
   async startElection(electionName: string) {
-    const election = this.client.election(electionName);
+    const election = this.__client.election(electionName);
 
     const createCampaign = async () => {
       try {
         const campaign = election.campaign(this.hostname);
-        this.zLog.info(`campaign started for host: ${this.hostname}`);
+        this.__zLog.info(`campaign started for host: ${this.hostname}`);
   
         campaign.on('elected', () => {
-          this.zLog.info('I am the new leader');
-          this.emitElectionEvent(ELECTION_EVENTS.elected, true);
+          this.__zLog.info('I am the new leader');
+          this.__emitElectionEvent(ELECTION_EVENTS.elected, true);
         });
   
         campaign.on('error', err => {
-          this.zLog.error(`campaign error: ${NodeUtil.extractErrorMessage(err)}`);
-          setTimeout(() => createCampaign(), ELECTION_ERROR_TIMEOUT_IN_MS);
+          this.__zLog.error(`campaign error: ${NodeUtil.extractErrorMessage(err)}`);
+          setTimeout(() => createCampaign(), envLoader.SIGHT_ETCD_ELECTION_TIMEOUT);
         });
       } catch (err) {
-        this.zLog.error(`campaign initialization error: ${NodeUtil.extractErrorMessage(err)}`);
-        setTimeout(() => createCampaign(), ELECTION_ERROR_TIMEOUT_IN_MS);
+        this.__zLog.error(`campaign initialization error: ${NodeUtil.extractErrorMessage(err)}`);
+        setTimeout(() => createCampaign(), envLoader.SIGHT_ETCD_ELECTION_TIMEOUT);
       }
     };
 
     const createObserver = async () => {
       try {
         const observer = await election.observe();
-        this.zLog.info('leader observer started');
+        this.__zLog.info('leader observer started');
 
         observer.on('change', leader => {
           if (leader !== this.hostname) { 
-            this.zLog.info(`the new leader is: ${leader}`);
-            this.emitElectionEvent(ELECTION_EVENTS.elected, false);
+            this.__zLog.info(`the new leader is: ${leader}`);
+            this.__emitElectionEvent(ELECTION_EVENTS.elected, false);
           }
         });
 
         observer.on('error', err => {
-          this.zLog.error(`observer error: ${NodeUtil.extractErrorMessage(err)}`);
-          setTimeout(() => createObserver(), ELECTION_ERROR_TIMEOUT_IN_MS);
+          this.__zLog.error(`observer error: ${NodeUtil.extractErrorMessage(err)}`);
+          setTimeout(() => createObserver(), envLoader.SIGHT_ETCD_ELECTION_TIMEOUT);
         });
       } catch (err) {
-        this.zLog.error(`observer initialization error: ${NodeUtil.extractErrorMessage(err)}`);
-        setTimeout(() => createObserver(), ELECTION_ERROR_TIMEOUT_IN_MS);
+        this.__zLog.error(`observer initialization error: ${NodeUtil.extractErrorMessage(err)}`);
+        setTimeout(() => createObserver(), envLoader.SIGHT_ETCD_ELECTION_TIMEOUT);
       }
     };
 
     try {
       Promise.all([ createCampaign(), createObserver() ]);
     } catch (err) {
-      this.zLog.error(`election error: ${NodeUtil.extractErrorMessage(err)}`)
+      this.__zLog.error(`election error: ${NodeUtil.extractErrorMessage(err)}`)
     }
   }
 
   async startWatcher<EVT extends 'key' | 'prefix', K extends string, PRF = unknown>(opts: InitWatchOpts<EVT, K, PRF>): Promise<Watcher> {
     const watcher = await (async (): Promise<Watcher> => {
-      if ('prefix' in opts) return this.client.watch().prefix(opts.prefix).create();
-      return this.client.watch().key(opts.key).create();
+      if ('prefix' in opts) return this.__client.watch().prefix(opts.prefix).create();
+      return this.__client.watch().key(opts.key).create();
     })();
 
-    watcher.on('connected', () => this.zLog.info('watcher successfully connected'));
-    watcher.on('disconnected', () => this.zLog.info('watcher disconnected'));
-    watcher.on('error', err => this.zLog.error(`error on watcher: ${err.message}`));
+    watcher.on('connected', () => this.__zLog.info('watcher successfully connected'));
+    watcher.on('disconnected', () => this.__zLog.info('watcher disconnected'));
+    watcher.on('error', err => this.__zLog.error(`error on watcher: ${err.message}`));
 
-    watcher.on('data', data => this.emitMutatedKeyEvent(WATCH_EVENTS.data, data));
-    watcher.on('delete', res => this.emitMutatedKeyEvent(WATCH_EVENTS.delete, res));
-    watcher.on('put', res => this.emitMutatedKeyEvent(WATCH_EVENTS.put, res));
+    watcher.on('data', data => this.__emitMutatedKeyEvent(WATCH_EVENTS.data, data));
+    watcher.on('delete', res => this.__emitMutatedKeyEvent(WATCH_EVENTS.delete, res));
+    watcher.on('put', res => this.__emitMutatedKeyEvent(WATCH_EVENTS.put, res));
 
     return watcher;
   }
@@ -104,23 +110,23 @@ export class ETCDProvider extends EventEmitter {
   }
 
   async put<V, K extends string, PRF = unknown>(opts: { key: EtcdModel<V, K, PRF>['KeyType'], value: EtcdModel<V, K, PRF>['ValueType'] }): Promise<boolean> {
-    await this.client.put(opts.key).value(ValueSerializer.serialize(opts.value));
+    await this.__client.put(opts.key).value(ValueSerializer.serialize<V, K, PRF>(opts.value));
     return true;
   }
 
   async get<V, K extends string, PRF = unknown>(key: EtcdModel<V, K, PRF>['KeyType']): Promise<EtcdModel<V, K, PRF>['ValueType']> {
-    const buff = await this.client.get(key).buffer();
-    return ValueSerializer.deserialize(buff);
+    const buff = await this.__client.get(key).buffer();
+    return ValueSerializer.deserialize<V, K, PRF>(buff);
   }
 
   async delete<V, K extends string, PRF = unknown>(key: EtcdModel<V, K, PRF>['KeyType']): Promise<boolean> {
-    await this.client.delete().key(key);
+    await this.__client.delete().key(key);
     return true;
   }
 
-  async getAll<V, K extends string, PRF = unknown>(opts: ETCDDataProcessingOpts<V, K, PRF, 'iterate' | 'range'>): Promise<GetAllResponse<V, K, PRF>> {
+  async getAll<T extends 'iterate' | 'range', V, K extends string, PRF = unknown>(opts: ETCDDataProcessingOpts<V, K, PRF, T>): Promise<GetAllResponse<V, K, PRF>> {
     const pipeline = ((): MultiRangeBuilder => {
-      let builder = this.client.getAll();
+      let builder = this.__client.getAll();
       
       if ('prefix' in opts) builder = builder.prefix(opts.prefix);
       if ('range' in opts) { 
@@ -146,7 +152,7 @@ export class ETCDProvider extends EventEmitter {
   }
 
   async createLease<V, K extends string, PRF = unknown>(existingKey: EtcdModel<V, K, PRF>['KeyType'], opts: CreateLeaseOptions): Promise<Lease> {
-    const lease = this.client.lease(opts.ttl, opts.opts);
+    const lease = this.__client.lease(opts.ttl, opts.opts);
     await lease.put(existingKey).exec();
     return lease;
   }
@@ -160,6 +166,11 @@ export class ETCDProvider extends EventEmitter {
     return true;
   }
 
-  private emitElectionEvent = (event: ElectionEvent, elected: boolean) => super.emit(event, elected);
-  private emitMutatedKeyEvent = (event: WatchEvent, data: WatchEventData<typeof event>) => super.emit(event, data);
+  async closeConnection() {
+    this.__client.close();
+  }
+
+  private __emitElectionEvent = (event: ElectionEvent, elected: boolean) => super.emit(event, elected);
+
+  private __emitMutatedKeyEvent = (event: WatchEvent, data: WatchEventData<typeof event>) => super.emit(event, data);
 }

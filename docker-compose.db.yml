@@ -20,12 +20,6 @@ services:
     volumes:
       - ./db/rs-init.sh:/scripts/rs-init.sh
       - $HOME/sight/sight_db_replica_0:/data/db
-    depends_on:
-      - sight_db_replica_1
-      - sight_db_replica_2
-    links:
-      - sight_db_replica_1
-      - sight_db_replica_2
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "sight_replication_set" ]
   sight_db_replica_1:
     <<: *common_mongo_settings

@@ -1,8 +1,10 @@
 import { ClusterNode } from 'ioredis';
 
+import { ApplicableSystem } from '../ServerConfigurations.js';
 import { ETCDProvider } from '../core/replication/EtcdProvider.js';
-import { RedisProvider } from '../core/data/providers/RedisProvider.js';
 import { MemcacheProvider } from '../core/data/providers/MemcacheProvider.js';
+import { RedisProvider } from '../core/data/providers/RedisProvider.js';
+import { ReplicationProvider } from '../core/replication/ReplicationProvider.js';
 import { QueueProvider } from '../core/data/providers/QueueProvider.js';
 import { MongoOpts } from '../core/data/types/Mongo.js';
 import { DEFAULT_CLUSTER_OPTIONS, ServiceDbMap, RedisService } from '../core/data/types/Redis.js';
@@ -22,15 +24,21 @@ export class Connection {
     return new MemcacheProvider({
       db: opts.db, prefix: opts.prefix, expirationInSec: 10000,
       connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS }
-    })
+    });
   }
 
   static queue(db: ServiceDbMap<'queue'>) {
-    return new QueueProvider({ db, connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS } });
+    return new QueueProvider({ 
+      db, connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS } 
+    });
   }
 
   static etcd() {
     return new ETCDProvider(Profile.etcdCluster());
+  }
+
+  static replication(system: ApplicableSystem) {
+    return new ReplicationProvider(system, Connection.etcd());
   }
 
   static async mongo(opts?: MongoOpts) {

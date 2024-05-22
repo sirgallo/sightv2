@@ -18,7 +18,7 @@ export class NodeUtil {
   };
 
   static extractErrorMessage = (err: Error): string => { return err.message; };
-
+  
   static convertISOToUnix = (isoString: ISODateString): number => { return Math.floor(new Date(isoString).getTime() / 1000); };
 
   static convertUnixToISO = (unixTime: number): ISODateString => { return new Date(unixTime * 1000).toISOString() as ISODateString; };
