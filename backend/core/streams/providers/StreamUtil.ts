@@ -31,7 +31,7 @@ export class StreamUtil {
         acc.push(...[ key, StreamUtil.stringifyIfNeeded(val[key]) ]);
         return acc;
       }, []);
-    } else { return [ 'message', StreamUtil.stringifyIfNeeded(val) ]; }     // this is a default if incoming message is a string, will set a default field
+    } else { return [ 'message', StreamUtil.stringifyIfNeeded(val) ]; } // this is a default if incoming message is a string, will set a default field
   };
 
   static parsePrefixedKey = (prefix: string, key: string): `${string}-${string}` => `${prefix}-${key}`;

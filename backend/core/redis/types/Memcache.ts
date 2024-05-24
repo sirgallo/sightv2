@@ -1,6 +1,6 @@
 import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 
-import { MemcacheDb } from './Redis.js';
+import { MemcacheDb } from '../../data/types/Redis.js';
 
 
 export interface MemcacheOpts<T extends string = undefined> {

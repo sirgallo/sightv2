@@ -3,5 +3,5 @@ import { BroadcastServer } from './BroadcastServer.js';
 
 try {
   const server = new BroadcastServer(serverConfigurations.broadcast);
-  server.startServer();
+  await server.startServer();
 } catch (err) { console.log(err); }

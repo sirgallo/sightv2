@@ -9,7 +9,7 @@ import { LogProvider } from '../../core/log/LogProvider.js';
 import { JWTMiddleware, JWTVerifyPayload } from '../../core/middleware/JWTMiddleware.js';
 import { ACLMiddleware } from '../../core/middleware/ACLMiddleware.js';
 import { NodeUtil } from '../../core/utils/Node.js';
-import { MemcacheProvider } from '../../core/data/providers/MemcacheProvider.js';
+import { MemcacheProvider } from '../../core/redis/providers/MemcacheProvider.js';
 import { serverConfigurations } from '../../ServerConfigurations.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { IUser } from '../../db/models/User.js';

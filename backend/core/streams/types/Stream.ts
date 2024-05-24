@@ -5,7 +5,6 @@ import { CryptoUtil } from '../../utils/Crypto.js';
 
 
 export interface StreamOpts<T extends string = undefined> {
-  id: ReturnType<typeof CryptoUtil.generateSecureUUID>;
   db: StreamDb;
   prefix?: T;
   connOpts?: { redis: RedisOptions } | { nodes: ClusterNode[], cluster: ClusterOptions };

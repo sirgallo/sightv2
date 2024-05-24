@@ -1,6 +1,6 @@
 import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 
-import { QueueDb } from './Redis.js';
+import { QueueDb } from '../../data/types/Redis.js';
 
 
 export interface QueueOpts {

@@ -1,4 +1,4 @@
-import { RedisProvider } from './RedisProvider.js';
+import { RedisProvider } from '../../data/providers/RedisProvider.js';
 import { LogProvider } from '../../log/LogProvider.js';
 import { NodeUtil } from '../../utils/Node.js';
 import { MemcacheOpts } from '../types/Memcache.js';
@@ -13,9 +13,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
   }
 
   get client() {
-    if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
-      return this.__redisProvider.getCluster({ service: 'memcache', db: this.__opts.db });
-    } else { return this.__redisProvider.getClient({ service: 'memcache', db: this.__opts.db }); } 
+    return this.__getClient();
   }
 
   async close() {
@@ -30,7 +28,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       return true;
     };
 
-    return this.__execcmd(handler, opts);
+    return this.__execCmd(handler, opts);
   }
 
   async get<T>(key: string): Promise<T> {
@@ -40,7 +38,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       if (strResp) return JSON.parse(strResp);
     };
 
-    return this.__execcmd(handler, key);
+    return this.__execCmd(handler, key);
   }
 
   async delete(key: string): Promise<boolean> {
@@ -50,7 +48,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       return true;
     };
     
-    return this.__execcmd(handler, key);
+    return this.__execCmd(handler, key);
   }
 
   async hset<T extends { [field: string]: any } = undefined>(opts: { key: string, value: T, expire?: boolean }): Promise<boolean> {
@@ -61,7 +59,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       return true;
     };
     
-    return this.__execcmd(handler, opts);
+    return this.__execCmd(handler, opts);
   }
 
   async hget(opts: { key: string, field: string }): Promise<string> {
@@ -70,7 +68,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       return this.client.hget(prefixedKey, opts.field);
     };
 
-    return this.__execcmd(handler, opts);
+    return this.__execCmd(handler, opts);
   }
 
   async hgetall<T extends { [field: string]: any } = undefined>(key: string): Promise<T> {
@@ -80,7 +78,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       return value as T;
     };
 
-    return this.__execcmd(handler, key);
+    return this.__execCmd(handler, key);
   }
 
   async hdel(key: string): Promise<boolean> {
@@ -90,7 +88,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
       return true;
     };
     
-    return this.__execcmd(handler, key);
+    return this.__execCmd(handler, key);
   }
 
   flush(): boolean{
@@ -98,7 +96,21 @@ export class MemcacheProvider<PRF extends string = undefined>{
     return true;
   }
 
-  private async __execcmd<T extends (...args: any) => any>(
+  private __getClient() {
+    if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
+      return this.__redisProvider.getCluster({ service: 'memcache', db: this.__opts.db });
+    }
+    
+    return this.__redisProvider.getClient({ service: 'memcache', db: this.__opts.db });
+  }
+
+  private async __removeClient() {
+    if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
+      await this.__redisProvider.removeCluster({ service: 'memcache', db: this.__opts.db });
+    } else { await this.__redisProvider.removeClient({ service: 'memcache', db: this.__opts.db }); }
+  }
+
+  private async __execCmd<T extends (...args: any) => any>(
     fn: (...args: Parameters<T>) => Promise<ReturnType<T>>,
     ...args: Parameters<T>
   ) {
@@ -116,10 +128,4 @@ export class MemcacheProvider<PRF extends string = undefined>{
   }
 
   private __prefixedKey = (key: string): string => `${this.__opts.prefix}:${key}`;
-  
-  private async __removeClient() {
-    if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
-      await this.__redisProvider.removeCluster({ service: 'memcache', db: this.__opts.db });
-    } else { await this.__redisProvider.removeClient({ service: 'memcache', db: this.__opts.db }); }
-  }
 }

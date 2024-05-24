@@ -1,5 +1,3 @@
-/*
-import { RedisValue } from 'ioredis';
 import lodash from 'lodash';
 const { first, last } = lodash;
 
@@ -8,15 +6,14 @@ import { LogProvider } from '../../log/LogProvider.js';
 import { CryptoUtil } from '../../utils/Crypto.js';
 import { 
   StreamOpts, XAddOpts, XRangeOpts, XReadOpts, TrimFromLastIdOpts, XPendingOpts,
-  ReadResponse, StreamInfoResponse, EntryResponse, GroupInfoResponse,
-  genFullKey, spreadFields, genLastAcknowledgedKey,
+  ReadResponse, StreamInfoResponse, EntryResponse, GroupInfoResponse, spreadFields, genLastAcknowledgedKey,
   LAST_ACKNOWLEDGED_FIELD, GroupInfoValueIndexes, StreamInfoValueIndexes, PendingResponse 
 } from '../types/Stream.js'
 import { StreamUtil } from './StreamUtil.js';
 import { StreamArgGenerator } from './generators/StreamArgGenerator.js';
 
 
-export class StreamProvider {
+export class StreamProvider { 
   private __redisProvider: RedisProvider;
   private __uuid = CryptoUtil.generateSecureUUID();
   private __zLog = new LogProvider(StreamProvider.name);
@@ -24,18 +21,19 @@ export class StreamProvider {
   constructor(private __opts: StreamOpts<'stream'>) {
     this.__redisProvider = new RedisProvider(this.__opts.connOpts);
   }
-  
-  get client() {
-    if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
-      return this.__redisProvider.getCluster({ service: 'stream', db: this.__opts.db });
-    } else { return this.__redisProvider.getClient({ service: 'stream', db: this.__opts.db }); } 
-  }
 
-  getInstanceId() {
+  get uuid() {
     this.__zLog.info(`current provider uuid: ${this.__uuid}`);
     return this.__uuid;
   }
 
+  get client() {
+    if (! this.__opts?.connOpts || 'cluster' in this.__opts.connOpts) { 
+      return this.__redisProvider.getCluster({ service: 'stream', db: this.__opts.db });
+    }
+    
+    return this.__redisProvider.getClient({ service: 'stream', db: this.__opts.db });
+  }
 
   async exists(streamKey: string): Promise<boolean> {
     const result = await this.client.exists(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey));
@@ -77,45 +75,38 @@ export class StreamProvider {
   }
 
   async read(streamKey: string, opts?: XReadOpts, lastId = '$'): Promise<ReadResponse> {
-    return this.client.xread(
-      ...StreamArgGenerator.parseXReadArgs(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey), lastId, opts)
-    );
+    return this.client.xread(...StreamArgGenerator.parseXReadArgs(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey), lastId, opts));
   }
 
   async readGroup(streamKey: string, consumerGroup: string, consumerName: string, opts: XReadOpts, lastId = '>'): Promise<ReadResponse> {
-    const prefixedStreamKey = genFullKey(this.streamKeyPrefix, streamKey);
-    const parsedArgs = ParseStreamArguments.parseXReadGroupArgs(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey), lastId, consumerGroup, consumerName, opts);
-    
     return this.client.xreadgroup(
-      'GROUP', 
+      'GROUP',
       ...StreamArgGenerator.parseXReadGroupArgs(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey), lastId, consumerGroup, consumerName, opts)
-    );
+    ) as Promise<ReadResponse>;
   }
 
   async ack(streamKey: string, consumerGroup: string, id: string): Promise<boolean> {
-    const prefixedStreamKey = genFullKey(this.streamKeyPrefix, streamKey);
-    const lastAckKey = genLastAcknowledgedKey(consumerGroup);
-    
-    await this.redisClient.xack(prefixedStreamKey, consumerGroup, id);
+    const lastAckKey = genLastAcknowledgedKey(consumerGroup);    
+    await this.client.xack(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey), consumerGroup, id);
     
     //  keep track of last acknowledged since redis doesn't already do this
     //  use transaction to ensure that if key is being modified concurrently, skip
-    const transaction = this.redisClient.multi();
+    const transaction = this.client.multi();
     transaction.watch(lastAckKey);
     transaction.hset(lastAckKey, LAST_ACKNOWLEDGED_FIELD, id);
 
-    await transaction.exec().catch(err => { this.zLog.error(`unable to set last acknowledged ${err}`); });
-
+    await transaction.exec().catch(err => { this.__zLog.error(`unable to set last acknowledged ${err}`); });
     return true;
   }
 
   async claim(streamKey: string, consumerGroup: string, consumerName: string, ids: string[], minIdleTime?: number): Promise<EntryResponse[]> {
-    const prefixedStreamKey = genFullKey(this.streamKeyPrefix, streamKey);
-    return this.redisClient.xclaim(prefixedStreamKey, ParseStreamArguments.parseXClaimArgs(consumerGroup, consumerName, ids, minIdleTime));
+    return this.client.xclaim(
+      StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey),
+      ...StreamArgGenerator.parseXClaimArgs(consumerGroup, consumerName, ids, minIdleTime)
+    ) as Promise<EntryResponse[]>;
   }
 
   async pending(streamKey:string, consumerGroup: string, opts: XPendingOpts): Promise<PendingResponse[]> {
-    const prefixedKey = genFullKey(this.streamKeyPrefix, streamKey);
     const count = await (async () => {
       if (opts?.COUNT) return opts.COUNT;
       else { 
@@ -128,12 +119,15 @@ export class StreamProvider {
       }
     })();
 
-    return this.redisClient.xpending(prefixedKey, consumerGroup, opts.start, opts.end, count);
+    return this.client.xpending(
+      StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey),
+      consumerGroup, opts.start, opts.end, count
+    ) as Promise<PendingResponse[]>;
   }
 
   async getLastAcknowledgedId(consumerGroup: string): Promise<string> {
     const lastAckKey = genLastAcknowledgedKey(consumerGroup);
-    return this.redisClient.hget(lastAckKey, LAST_ACKNOWLEDGED_FIELD);
+    return this.client.hget(lastAckKey, LAST_ACKNOWLEDGED_FIELD);
   }
 
   async getLastDeliveredId(streamKey: string, consumerGroup: string): Promise<string> {
@@ -144,15 +138,14 @@ export class StreamProvider {
   }
 
   async range(streamKey: string, opts: XRangeOpts): Promise<EntryResponse[]> {
-    const prefixedStreamKey = genFullKey(this.streamKeyPrefix, streamKey);
-    const parsedArgs = ParseStreamArguments.parseXRangeArgs(opts);
-    
-    return this.client.xrange(prefixedStreamKey, ...parsedArgs);
+    return this.client.xrange(
+      StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey),
+      ...StreamArgGenerator.parseXRangeArgs(opts)
+    );
   }
 
   async len(streamKey: string): Promise<number> {
-    const prefixedStreamKey = genFullKey(this.streamKeyPrefix, streamKey);
-    return this.client.xlen(prefixedStreamKey);
+    return this.client.xlen(StreamUtil.parsePrefixedKey(this.__opts?.prefix, streamKey));
   }
 
   async del(streamKey: string, ids: string[]): Promise<boolean> {
@@ -177,11 +170,14 @@ export class StreamProvider {
     }
 
     const lastEntryId = last(entries)[0];
-    await this.paginateDelRange(streamKey, { start: lastEntryId, end: opts.end, COUNT: opts.COUNT });             //  recursively paginate up to end id
+    await this.paginateDelRange(streamKey, { start: lastEntryId, end: opts.end, COUNT: opts.COUNT }); //  recursively paginate up to end id
   }
 
   async trim(streamKey: string, maxLength: number, exactLength = false): Promise<boolean> {
-    await this.client.xtrim(StreamUtil.parsePrefixedKey(this.__opts.prefix, streamKey), ...StreamArgGenerator.parseXTrimArgs(maxLength, exactLength));
+    await this.client.xtrim(
+      StreamUtil.parsePrefixedKey(this.__opts.prefix, streamKey), 
+      ...StreamArgGenerator.parseXTrimArgs(maxLength)
+    );
 
     return true;
   }
@@ -201,4 +197,3 @@ export class StreamProvider {
     return true;
   }
 }
-*/

@@ -45,12 +45,17 @@ export class AuthProvider implements AuthEndpoints {
   async register(opts: AuthRequest<'register'>): Promise<AuthResponse> {
     try {
       const hash = await CryptoUtil.hashPassword(opts.password, { saltRounds: envLoader.PASSWORD_SALT_ROUNDS });
-      const payload: IUser = { ...opts, password: hash };
-      const newUser = first(await this.__sightDb.user.insertMany([ payload ]));
+      const payload: IUser = { 
+        userId: CryptoUtil.generateSecureUUID(),
+        password: hash,
+        ...opts,
+      };
 
+      const newUser = first(await this.__sightDb.user.insertMany([ payload ]));
       const token = await this.__jwtMiddleware.sign(newUser.userId);
       const refreshToken = await this.__refreshMiddleware.sign(newUser.userId);
       await this.__sightDb.token.findOneAndUpdate({ userId: newUser.userId }, { $set: { refreshToken } });
+
       return { token };
     } catch (err) {
       this.__zLog.error(err);

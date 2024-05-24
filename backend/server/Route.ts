@@ -51,7 +51,7 @@ export abstract class Route<T extends string, V> {
   abstract validateRequest(opts: RouteReqOpts<T>, req: Request): Promise<V>;
   abstract executeRequest(opts: RouteReqOpts<T>, args: Awaited<ReturnType<typeof this.validateRequest>>, res: Response, next: NextFunction): Promise<boolean>;
 
-  private __register( subPaths: RoutePathOpts[]) {
+  private __register(subPaths: RoutePathOpts[]) {
     for (const { path, authenticate, handler } of subPaths) {
       if (authenticate && this.routeAuthEnabled) this.router.post(path, this.jwtMiddleware.authenticate, handler.bind(this));
       this.router.post(path, handler.bind(this));

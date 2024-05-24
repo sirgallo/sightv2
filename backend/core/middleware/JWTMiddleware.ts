@@ -10,11 +10,11 @@ import { IToken, IUser } from '../../db/models/User.js';
 
 
 export class JWTMiddleware {
-  private zLog = new LogProvider(JWTMiddleware.name);
-  constructor(private opts: JWTOpts) {}
+  private __zLog = new LogProvider(JWTMiddleware.name);
+  constructor(private __opts: JWTOpts) {}
   
   async sign(userId: string): Promise<string> {
-    const { secret, timespanInSec } = this.opts;
+    const { secret, timespanInSec } = this.__opts;
     const signHelper = () => sign({ id: userId }, secret, { expiresIn: timespanInSec });
     
     return NodeUtil.wrapAsync(signHelper);
@@ -34,7 +34,7 @@ export class JWTMiddleware {
       req['user'] = user;
       next();
     } catch (err) {
-      this.zLog.error(`authenticate error: ${NodeUtil.extractErrorMessage(err)}`)
+      this.__zLog.error(`authenticate error: ${NodeUtil.extractErrorMessage(err)}`)
       return res.status(403).send({ error: NodeUtil.extractErrorMessage(err) });
     }
   }
@@ -42,7 +42,7 @@ export class JWTMiddleware {
   async verify(token: string, opts?: { ignoreExpiration: true }): Promise<JWTVerifyPayload> {
     let sightDb: SightMongoProvider;
     try {
-      const { secret } = this.opts;
+      const { secret } = this.__opts;
       const verifyWrapper = () => verify(token, secret, opts);
       sightDb = await Connection.mongo();
 
@@ -50,7 +50,7 @@ export class JWTMiddleware {
       const { userId, displayName, orgId, role }: IUser = await sightDb.user.findOne({ userId: id });
       return { user: { userId, displayName, orgId, role } };
     } catch (err) {
-      this.zLog.error(`decode error: ${NodeUtil.extractErrorMessage(err)}`);
+      this.__zLog.error(`decode error: ${NodeUtil.extractErrorMessage(err)}`);
       if (err instanceof jsonwebtoken.TokenExpiredError && ! opts) { return this.handleRefreshToken(token, sightDb); }
       throw err;
     }

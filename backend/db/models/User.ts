@@ -12,12 +12,13 @@ export const TokenCollectionName = 'token';
 
 export interface IUser {
   userId: string;
-  orgId: string;
   email: string;
   password: string;
   displayName: string;
   phone: string;
   role: UserRole;
+
+  orgId?: string; // enable after account creation
 
   createdAt?: Date; // injected
   updatedAt?: Date; // injected
@@ -43,9 +44,9 @@ export const UserSchema: Schema<UserDocument> = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, unique: false },
   phone: { type: String, required: true, unique: true },
-  orgId: { type: String, required: true, unique: false },
   displayName: { type: String, required: true, unique: true },
-  role: { type: String, required: true, unique: false }
+  role: { type: String, required: true, unique: false },
+  orgId: { type: String, required: false, unique: false },
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
   collection: UserCollectionName,

@@ -1,6 +1,6 @@
 import { Redis, RedisValue } from 'ioredis';
 
-import { RedisProvider } from './RedisProvider.js';
+import { RedisProvider } from '../../data/providers/RedisProvider.js';
 import { MemcacheProvider } from './MemcacheProvider.js';
 import { LogProvider } from '../../log/LogProvider.js';
 import { NodeUtil } from '../../utils/Node.js';

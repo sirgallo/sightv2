@@ -1,6 +1,6 @@
 import { Cluster, Redis } from 'ioredis';
 
-import { RedisProvider } from './RedisProvider.js';
+import { RedisProvider } from '../../data/providers/RedisProvider.js';
 import { QueueOpts, BPOPResp } from '../types/Queue.js';
 
 

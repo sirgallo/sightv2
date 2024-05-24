@@ -5,7 +5,7 @@ export type AuthRequest<T extends keyof AuthEndpoints> =
   T extends 'authenticate'
   ? Pick<IUser, 'email' | 'password'>
   : T extends 'register'
-  ? IUser
+  ? Omit<IUser, 'userId' | 'orgId'>
   : never;
 
 export interface AuthResponse {

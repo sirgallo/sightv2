@@ -2,10 +2,10 @@ import { ClusterNode } from 'ioredis';
 
 import { ApplicableSystem } from '../ServerConfigurations.js';
 import { ETCDProvider } from '../core/replication/EtcdProvider.js';
-import { MemcacheProvider } from '../core/data/providers/MemcacheProvider.js';
+import { MemcacheProvider } from '../core/redis/providers/MemcacheProvider.js';
 import { RedisProvider } from '../core/data/providers/RedisProvider.js';
 import { ReplicationProvider } from '../core/replication/ReplicationProvider.js';
-import { QueueProvider } from '../core/data/providers/QueueProvider.js';
+import { QueueProvider } from '../core/redis/providers/QueueProvider.js';
 import { MongoOpts } from '../core/data/types/Mongo.js';
 import { DEFAULT_CLUSTER_OPTIONS, ServiceDbMap, RedisService } from '../core/data/types/Redis.js';
 import { envLoader } from '../common/EnvLoader.js';

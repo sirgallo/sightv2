@@ -1,6 +1,6 @@
 import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 
-import { VectorDb } from './Redis.js';
+import { VectorDb } from '../../data/types/Redis.js';
 
 
 export interface TensorShape {
