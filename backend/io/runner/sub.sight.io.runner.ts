@@ -25,32 +25,32 @@ class SubIORunner extends SightIORunner<boolean> {
   }
 
   private async prepareMockAuthData(sightDb: SightMongoProvider) {
-    for (const org of AuthIOData.orgs()) {
+    const { orgs, users, acls } = AuthIOData.data();
+
+    for (const org of orgs) {
       await sightDb.org.findOneAndReplace({ orgId: org.orgId }, org, { new: true });
     }
 
-    for (const acl of AuthIOData.acls()) {
+    for (const acl of acls) {
       await sightDb.acl.findOneAndReplace({ aclId: acl.aclId }, acl, { new: true });
     }
 
-    for (const user of AuthIOData.users()) {
+    for (const user of users) {
       await sightDb.user.findOneAndDelete({ userId: user.userId });
       await new AuthProvider(sightDb).register(user);
     }
   }
 
-  private async connectAndSubscribe(
-    subscriber: SubscriberProvider<BroadcastRoomData<MockRoomDataPayload>>,
-    sightDb: SightMongoProvider
-  ) {
+  private async connectAndSubscribe(subscriber: SubscriberProvider, sightDb: SightMongoProvider) {
     try {
       const jwtMiddleware = new JWTMiddleware({ 
         secret: envLoader.JWT_SECRET,
         timespanInSec: envLoader.JWT_REFRESH_TIMEOUT 
       });
 
+      const { users } = AuthIOData.data();
       const mockConnectOpts = RoomIOData.connect();
-      const user0 = await sightDb.user.findOne({ userId: AuthIOData.users()[0].userId });
+      const user0 = await sightDb.user.findOne({ userId: users[0].userId });
       const token = await jwtMiddleware.sign(user0.userId);
       const validatedConnectOpts = mockConnectOpts
         .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, token }))
@@ -60,22 +60,22 @@ class SubIORunner extends SightIORunner<boolean> {
         try {
           for (const opt of validatedConnectOpts) { 
             subscriber.listen(opt); 
-            this.zLog.debug(`listening on publisher for opt: ${opt}`);
+            this.zLog.debug(`listening on subscriber for opt: ${JSON.stringify(opt, null, 2)}`);
           };
         } catch (err) {
-          this.zLog.error(`listening on publisher error: ${NodeUtil.extractErrorMessage(err)}`);
+          this.zLog.error(`listening on subscriber error: ${NodeUtil.extractErrorMessage(err)}`);
           throw err;
         }
-      })
+      });
 
-      await this.__subscribe(subscriber);
+      this.__subscribe(subscriber);
     } catch (err) {
-      this.zLog.error(`connect io publisher error: ${NodeUtil.extractErrorMessage(err)}`);
+      this.zLog.error(`connect io subscriber error: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;
     }
   }
 
-  private async __subscribe(subscriber: SubscriberProvider<BroadcastRoomData<MockRoomDataPayload>>) {
+  private __subscribe(subscriber: SubscriberProvider) {
     try {
       subscriber.on(msg => {
         this.zLog.debug(`msg received: ${msg}`);

@@ -42,9 +42,7 @@ export class Connection {
   }
 
   static async mongo(opts?: MongoOpts) {
-    const sightDb = new SightMongoProvider();
-    await sightDb.createNewConnection(opts)
-    return sightDb;
+    return SightMongoProvider.getInstance(opts);
   }
 }
 

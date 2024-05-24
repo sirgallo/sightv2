@@ -1,5 +1,5 @@
 import { JWTMiddleware } from '../../core/middleware/JWTMiddleware.js';
-import { NodeUtil } from 'core/utils/Node.js';
+import { NodeUtil } from '../../core/utils/Node.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
 import { PublisherProvider } from '../../broadcast/providers/PublisherProvider.js';
@@ -25,15 +25,17 @@ class PubIORunner extends SightIORunner<boolean> {
   }
 
   private async prepareMockAuthData(sightDb: SightMongoProvider) {
-    for (const org of AuthIOData.orgs()) {
+    const { orgs, users, acls } = AuthIOData.data();
+
+    for (const org of orgs) {
       await sightDb.org.findOneAndReplace({ orgId: org.orgId }, org, { new: true });
     }
 
-    for (const acl of AuthIOData.acls()) {
+    for (const acl of acls) {
       await sightDb.acl.findOneAndReplace({ aclId: acl.aclId }, acl, { new: true });
     }
 
-    for (const user of AuthIOData.users()) {
+    for (const user of users) {
       await sightDb.user.findOneAndDelete({ userId: user.userId });
       await new AuthProvider(sightDb).register(user);
     }
@@ -46,26 +48,25 @@ class PubIORunner extends SightIORunner<boolean> {
         timespanInSec: envLoader.JWT_REFRESH_TIMEOUT 
       });
 
+      const { users } = AuthIOData.data();
+
       const mockConnectOpts = RoomIOData.connect();
-      const user0 = await sightDb.user.findOne({ userId: AuthIOData.users()[0].userId });
+      const user0 = await sightDb.user.findOne({ userId: users[0].userId });
       const token = await jwtMiddleware.sign(user0.userId);
       const validatedConnectOpts = mockConnectOpts
         .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, token }))
         .filter(room => room.roomType === 'org' || room.roomId === user0.userId);
 
-      new Promise(() => {
-        try {
-          for (const opt of validatedConnectOpts) { 
-            publisher.listen(opt); 
-            this.zLog.debug(`listening on publisher for opt: ${opt}`);
-          };
-        } catch (err) {
-          this.zLog.error(`listening on publisher error: ${NodeUtil.extractErrorMessage(err)}`);
-          throw err;
-        }
-      })
+      try {
+        for (const opt of validatedConnectOpts) { 
+          publisher.listen(opt)
+        };
+      } catch (err) {
+        this.zLog.error(`listening on publisher error: ${NodeUtil.extractErrorMessage(err)}`);
+        throw err;
+      }
 
-      await this.__publish(publisher, validatedConnectOpts);
+      this.__publish(publisher, validatedConnectOpts);
     } catch (err) {
       this.zLog.error(`connect io publisher error: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;

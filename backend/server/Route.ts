@@ -64,21 +64,21 @@ export abstract class Route<T extends string, V> {
 
 export class RouteRequestValidators {
   static isEmptyArray = <T>(arg?: T[]): boolean => {
-    const isNull = RouteRequestValidators.isNullOrUndefined(arg);
+    const isNull = RouteRequestValidators.__isNullOrUndefined(arg);
     if (isNull) return true;
 
     return arg?.length === 0;
   };
 
   static isInvalidType = <T>(type: ValidField, arg?: T): boolean => { 
-    const isNull = RouteRequestValidators.isNullOrUndefined(arg);
+    const isNull = RouteRequestValidators.__isNullOrUndefined(arg);
     if (isNull) return true;
 
     return typeof arg !== type;
   };
 
   static isEmptObject = <T>(arg?: T) => {
-    const isNull = RouteRequestValidators.isNullOrUndefined(arg);
+    const isNull = RouteRequestValidators.__isNullOrUndefined(arg);
     if (isNull) return true;
 
     const invalidType = RouteRequestValidators.isInvalidType('object', arg);
@@ -87,7 +87,7 @@ export class RouteRequestValidators {
     return Object.keys(arg).length === 0;
   }
 
-  private static isNullOrUndefined = <T>(arg?: T): boolean => ! arg;
+  private static __isNullOrUndefined = <T>(arg?: T): boolean => ! arg;
 }
 
 
@@ -95,7 +95,7 @@ type ValidField =
   'boolean'
   | 'number'
   | 'string'
-  | 'object'
+  | 'object';
 
 export interface RouteImpl {
   registerPaths(paths: RoutePathOpts[]): void;

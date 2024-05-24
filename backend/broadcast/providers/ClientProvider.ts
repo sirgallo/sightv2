@@ -1,10 +1,11 @@
 import { io, Socket } from 'socket.io-client';
 
+import { serverConfigurations } from '../../ServerConfigurations.js';
 import { LogProvider } from '../../core/log/LogProvider.js';
 import { NodeUtil } from '../../core/utils/Node.js';
 import { BackoffUtil } from '../../core/utils/Backoff.js';
 import { envLoader } from '../../common/EnvLoader.js';
-import { ClientOpts, Protocol, SocketEndpoint } from '../types/Client.js';
+import { ClientOpts, pathSuffix, Protocol, SocketEndpoint } from '../types/Client.js';
 import { BroadcastEvent, broadcastEventMap, BroadcastRoomConnect, BroadcastRoomData, clientEventMap } from '../types/Broadcast.js';
 
 
@@ -20,9 +21,22 @@ export abstract class ClientProvider {
   get endpoint() { return this.__endpoint; }
 
   async listen(listenOpts: Pick<BroadcastRoomConnect, 'roomId' | 'roomType' | 'token'>) {
-    this.__socket.on(clientEventMap.connection, (socket: Socket) => { 
+    this.__socket.on('connect', () => {
+      this.zLog.info(`connection to ${this.__endpoint} made successfully`);
+
+      this.__socket.io.engine.once('upgrade', () => {
+        this.zLog.info(`upgraded transport layer: ${this.__socket.io.engine.transport.name}`); // called when the transport is upgraded (i.e. from HTTP long-polling to WebSocket)
+      });
+
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db };
-      socket.emit(broadcastEventMap.JOIN, connectOpts);
+      this.zLog.info(`attempt room join with: ${JSON.stringify(connectOpts, null, 2)}`);
+      this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
+    });
+
+    this.__socket.on(clientEventMap.disconnect, (reason: Socket.DisconnectReason) => {
+      this.zLog.info(`${clientEventMap.disconnect}:${this.__socket.id}`);
+      this.zLog.debug(`reason: ${reason}`);
+      if (this.opts.keepAlive) this.__socket.emit(clientEventMap.reconnect)
     });
 
     this.__socket.on(broadcastEventMap.REFRESH, (token: string) => {
@@ -43,10 +57,12 @@ export abstract class ClientProvider {
       this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
     });
 
-    this.__socket.on(clientEventMap.disconnect, (reason: Socket.DisconnectReason) => {
-      this.zLog.info(`${clientEventMap.disconnect}:${this.__socket.id}`);
-      this.zLog.debug(`reason: ${reason}`);
-      if (this.opts.keepAlive) this.__socket.emit(clientEventMap.reconnect)
+    this.__socket.io.on('ping', () => {
+      this.__socket.emit('pong');
+    });
+
+    this.__socket.io.on('error', err => {
+      this.zLog.error(`error on client socket: ${NodeUtil.extractErrorMessage(err)}`);
     });
   }
 
@@ -59,7 +75,9 @@ export abstract class ClientProvider {
   }
 
   private __initialize() { 
-    this.__socket = io(this.__endpoint);
+    const path = `${serverConfigurations.broadcast.root}${pathSuffix}`;
+    this.__socket = io(this.__endpoint, { path, withCredentials: true });
+    this.zLog.info(`socket initialized on ${this.__endpoint} with path: ${path}`)
   }
 
   private __endpointResolver = (opts?: { protocol: Protocol, endpoint: string, port?: number }) => {
@@ -68,11 +86,10 @@ export abstract class ClientProvider {
       return { endpoint: envLoader.SIGHT_PLATFORM_ENDPOINT, protocol: 'https' };
     })();
 
-    const socketPath = '/socket.io/';
     this.__endpoint = [ 
-      `${opts.endpoint}://${endpoint}`,
-      port ? `:${port}` : null,
-      socketPath 
+      `${opts.protocol}://${endpoint}`,
+      port ? `:${port}` : null
     ].filter(el => el).join('') as SocketEndpoint<Protocol>;
   }
 }
+

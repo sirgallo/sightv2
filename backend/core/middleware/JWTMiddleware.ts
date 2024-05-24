@@ -21,36 +21,39 @@ export class JWTMiddleware {
   }
 
   async authenticate(req: Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers['authorization'];
-    if (! authHeader) return res.sendStatus(401);
-
-    const [ scheme, token ] = authHeader.split(' ');
-    if (scheme !== 'Bearer' || ! token) return res.sendStatus(401);
-
     try {
+      const authHeader = req.headers['authorization'];
+      if (! authHeader) return res.status(401).send({ error: 'no auth header supplied' })
+
+      const [ scheme, token ] = authHeader.split(' ');
+      if (scheme !== 'Bearer' || ! token) return res.status(401).send({ error: 'scheme is not bearer for token' });
+
       const { user, newToken } = await this.verify(token);
       if (newToken) req.header['authorization'] = `Bearer ${newToken}`;
-      req['user'] = user
+
+      req['user'] = user;
       next();
     } catch (err) {
       this.zLog.error(`authenticate error: ${NodeUtil.extractErrorMessage(err)}`)
-      return res.sendStatus(403);
+      return res.status(403).send({ error: NodeUtil.extractErrorMessage(err) });
     }
   }
 
   async verify(token: string, opts?: { ignoreExpiration: true }): Promise<JWTVerifyPayload> {
-    const { secret } = this.opts;
-    const verifyWrapper = () => verify(token, secret, opts);
-    const sightDb = await Connection.mongo();
-    
+    let sightDb: SightMongoProvider;
     try {
-      const decoded = await NodeUtil.wrapAsync(verifyWrapper);
-      const { userId, displayName, orgId, role }: IUser = await sightDb.user.findOne({ userId: decoded as string });
+      const { secret } = this.opts;
+      const verifyWrapper = () => verify(token, secret, opts);
+      sightDb = await Connection.mongo();
+
+      const { id } = await NodeUtil.wrapAsync(verifyWrapper) as jsonwebtoken.JwtPayload;
+      const { userId, displayName, orgId, role }: IUser = await sightDb.user.findOne({ userId: id });
       return { user: { userId, displayName, orgId, role } };
     } catch (err) {
+      this.zLog.error(`decode error: ${NodeUtil.extractErrorMessage(err)}`);
       if (err instanceof jsonwebtoken.TokenExpiredError && ! opts) { return this.handleRefreshToken(token, sightDb); }
       throw err;
-    } finally { await sightDb.conn.close(); }
+    }
   }
 
   private async handleRefreshToken(token: string, sightDb: SightMongoProvider): Promise<JWTVerifyPayload> {

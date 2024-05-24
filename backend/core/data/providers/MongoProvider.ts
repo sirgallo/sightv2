@@ -19,17 +19,22 @@ export abstract class MongoProvider {
 
   async createNewConnection(opts?: MongoOpts) {
     try {
+      const uri = Profile.mongoConnectionString();
       const connectionOpts = opts?.override 
         ? opts.override
         : { autoIndex: true, autoCreate: true, maxPoolSize: 100, useUnifiedTopology: true, useNewUrlParser: true };
-      
-      this.__conn = await createConnection(Profile.mongoConnectionString(opts?.io), connectionOpts).asPromise();
+
+      this.__conn = await createConnection(uri, connectionOpts).asPromise();
       this.initModels();
     } catch (err) {
-      console.log('error:', err);
       this.zLog.error(`error on connection to mongo: ${NodeUtil.extractErrorMessage(err)}`);
       throw err; 
     }
+  }
+
+  async closeConnection(): Promise<boolean> {
+    await this.__conn.close();
+    return true;
   }
 
   abstract initModels(): void;

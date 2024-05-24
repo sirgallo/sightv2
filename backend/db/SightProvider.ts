@@ -1,6 +1,8 @@
 import { Document, Model, Schema } from 'mongoose';
 
 import { MongoProvider } from '../core/data/providers/MongoProvider.js';
+import { MongoOpts } from '../core/data/types/Mongo.js';
+import { NodeUtil } from '../core/utils/Node.js';
 import { ACLDocument, ACLSchema } from './models/ACL.js';
 import { EntityDocument, EntitySchema, ModelDocument, ModelSchema, RelationshipDocument, RelationshipSchema } from './models/Model.js';
 import { OrgDocument, OrgSchema } from './models/Org.js';
@@ -24,6 +26,21 @@ export class SightMongoProvider extends MongoProvider {
   taskHistory: Model<TaskHistoryDocument>;
   token: Model<TokenDocument>;
   user: Model<UserDocument>;
+
+  private static instance: SightMongoProvider;
+  private constructor() { super(); }
+
+  static async getInstance(opts?: MongoOpts): Promise<SightMongoProvider> {
+    try {
+      if (! SightMongoProvider.instance) { 
+        SightMongoProvider.instance = new SightMongoProvider();
+        await SightMongoProvider.instance.createNewConnection(opts);
+      }
+    } catch (err) {
+      SightMongoProvider.instance.zLog.error(`get instance error: ${NodeUtil.extractErrorMessage(err)}`);
+      throw err;
+    } finally { return SightMongoProvider.instance; }
+}
 
   initModels() {
     this.acl = this.modelValidator<ACLDocument>(dbConf.sight.collections.acl);

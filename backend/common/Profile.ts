@@ -4,12 +4,10 @@ import { envLoader } from './EnvLoader.js';
 
 
 export class Profile {
-  static mongoConnectionString(io?: boolean): `mongodb://${string}:${string}@${string}` {
-    const hosts = io 
-      ? `${envLoader.SIGHT_PLATFORM_ENDPOINT}:${envLoader.SIGHT_DB_DEFAULT_PORT}` 
-      : envLoader.SIGHT_DB_HOSTS;
-    const endpoint = `mongodb://${envLoader.SIGHT_DB_USER}:${envLoader.SIGHT_DB_PASS}@${hosts}`;
+  static mongoConnectionString(): `mongodb://${string}:${string}@${string}` {
+    const endpoint = `mongodb://${envLoader.SIGHT_DB_USER}:${envLoader.SIGHT_DB_PASS}@${envLoader.SIGHT_DB_HOSTS}`;
     const db = `sight?replicaset=${envLoader.SIGHT_DB_REPLICA_SET}`;
+    
     return [ endpoint, db ].join('/') as `mongodb://${string}:${string}@${string}`;
   }
 

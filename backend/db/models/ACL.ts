@@ -27,6 +27,7 @@ export type UserRole = Admin | PermissionedUser;
 export interface IACL {
   aclId: string;
   orgId: string;
+  name: string;
   aclMap: { [level in PermissionedUser]: AccessControlLevel };
 }
 
@@ -38,7 +39,8 @@ export interface ACLDocument extends IACL, Document {}
 
 export const ACLSchema: Schema<ACLDocument> = new Schema({
   aclId: { type: String, required: true, unique: true },
-  orgId: { type: String, required: true, unique: true },
+  orgId: { type: String, required: true, unique: false },
+  name: { type: String, required: true, unique: true },
   aclMap:  { type: Schema.Types.Mixed, required: true, unique: false },
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
@@ -52,3 +54,4 @@ export const ACLSchema: Schema<ACLDocument> = new Schema({
 
 ACLSchema.index({ aclId: 1 });
 ACLSchema.index({ orgId: 1, aclId: 1 });
+ACLSchema.index({ name: 1 });

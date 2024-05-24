@@ -17,4 +17,3 @@ export interface SightIOResults<T> {
 
 
 export const DEFAULT_RESULTS_FOLDER = join(homedir(), 'sight/io_results');
-export const DEFAULT_IO_BROADCAST_PORT = 1010;

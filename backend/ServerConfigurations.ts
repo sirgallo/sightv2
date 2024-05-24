@@ -38,12 +38,3 @@ export const serverConfigurations: { [server in ApplicableSystem]: ServerConfigu
     version: envLoader.SIGHT_PLATFORM_VERSION
   }
 };
-
-
-export const socketConfigurations: { [server in ApplicableSystem]?: { [service: string]: number } } = {
-  broadcast: {
-    client_broadcast: 1001,
-    internal_broadcast: 1002,
-    io_broadcast: 1003
-  }
-}

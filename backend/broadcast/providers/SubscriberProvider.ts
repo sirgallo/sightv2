@@ -6,7 +6,7 @@ import { BroadcastEvent, BroadcastRoomData } from '../types/Broadcast.js';
 import { SubscriberOpts } from '../types/Client.js';
 
 
-export class SubscriberProvider<T> extends ClientProvider {
+export class SubscriberProvider extends ClientProvider {
   private __subscriberEvents = new EventEmitter();
   private __event: BroadcastEvent;
 
@@ -18,11 +18,11 @@ export class SubscriberProvider<T> extends ClientProvider {
 
   get event() { return this.__event; }
 
-  on(listener: (msg: BroadcastRoomData<T>) => void) {
+  on<T>(listener: (msg: BroadcastRoomData<T>) => void) {
     return this.__subscriberEvents.on(this.__event, listener);
   }
   
-  private subscribe() {
+  private subscribe<T>() {
     this.clientOn(this.__event, (msg: BroadcastRoomData<T>) => this.__subscriberEvents.emit(this.__event, msg));
   }
 }

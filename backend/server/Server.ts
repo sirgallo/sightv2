@@ -1,8 +1,9 @@
 import express from 'express';
+import { createServer, Server as HttpServer } from 'http';
 import { Application, Request, Response, NextFunction, json, static as eStatic, urlencoded } from 'express';
 import cluster from 'cluster';
 import { config } from 'dotenv';
-import { cpus, hostname, networkInterfaces } from 'os';
+import { cpus, hostname } from 'os';
 import createError, { HttpError } from 'http-errors';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
@@ -28,6 +29,7 @@ import { routeMappings } from './configs/RouteMappings.js';
 config({ path: '.env' });
 export abstract class Server<T extends string> {
   protected app: Application;
+  protected server: HttpServer;
   protected root: `/${string}`;
   protected port: number;
   protected version: string;
@@ -36,7 +38,6 @@ export abstract class Server<T extends string> {
   protected zLog: LogProvider;
 
   private __hostname = hostname();
-  private __ip: string;
   private __name: string;
   private __routes: Route<string, unknown>[];
 
@@ -54,65 +55,48 @@ export abstract class Server<T extends string> {
   }
 
   get hostname() { return this.__hostname; }
-  get ip() { return this.__ip; }
   get name() { return this.__name; }
   get routes() { return this.__routes; }
   set routes(routes: Route<string, unknown>[]) { this.__routes = this.routes.concat(routes); }
 
-  async startServer() {
-    try {
-      await this.initService();
-      this.run();
-      this.startEventListeners();
-    } catch(err) {
-      this.zLog.error(`error message: ${NodeUtil.extractErrorMessage(err)}`);
-      throw err;
-    }
-  }
-
   abstract initService(): Promise<boolean>;
   abstract startEventListeners(): Promise<void>;
 
-  private async run() {
+  async startServer() {
     try { 
       this.zLog.info(`welcome to ${this.name}, version ${this.version}`);
-      if (this.numOfCpus > 1) {
-        if (cluster.isPrimary) {
-          this.zLog.info('...forking workers');
-
-          this.initApp();
-          this.setUpWorkers();
-        } else if (cluster.isWorker) {
-          this.initApp();
-          this.initMiddleware();
-          this.initRoutes();
-          this.setUpServer();
-        }
-      } else if (this.numOfCpus === 1) {
-        this.initApp();
-        this.initMiddleware();
-        this.initRoutes();
-        this.setUpServer();
-      } else {
-        throw new Error('number of cpus must be greater than 1.');
-      }
+      await this.initService();
+      this.__initApp();
+      await this.startEventListeners();
     } catch (err) {
-      this.zLog.error(NodeUtil.extractErrorMessage(err as Error));
+      this.server.removeAllListeners();
+      this.zLog.error(NodeUtil.extractErrorMessage(err));
       process.exit(1);
     }
   }
 
-  private initApp() {
+  private __initApp() {
     try {
       this.app = express();
-    } catch (err) { throw Error(`error initializing app => ${NodeUtil.extractErrorMessage(err as Error)}`); }
+      this.__initMiddleware();
+      this.__initRoutes();
+      this.server = createServer(this.app);
+      
+      if (this.numOfCpus > 1 && cluster.isPrimary) {
+        this.zLog.info('...forking workers');
+        this.__setUpWorkers();
+      } else if (this.numOfCpus === 1 || (this.numOfCpus > 1 && cluster.isWorker)) {
+        this.__listen();
+      } else {
+        throw new Error('number of cpus must be greater than 1.');
+      }
+    } catch (err) { 
+      throw Error(`error initializing app => ${NodeUtil.extractErrorMessage(err as Error)}`); 
+    }
   }
 
-  private initMiddleware() {
+  private __initMiddleware() {
     try {
-      this.initIpAddress();
-      this.app.set('port', this.port);
-
       this.app.use(json());
       this.app.use(urlencoded({ extended: false }));
       this.app.use(cookieParser());
@@ -122,7 +106,7 @@ export abstract class Server<T extends string> {
     } catch (err) { throw Error(`error initializing middleware => ${NodeUtil.extractErrorMessage(err as Error)}`); }
   }
 
-  private initRoutes() {
+  private __initRoutes() {
     try {
       for (const route of this.__routes) {
         this.app.use(route.rootpath, route.router);
@@ -134,17 +118,17 @@ export abstract class Server<T extends string> {
     } catch (err) { throw Error(`error initializing routes => ${NodeUtil.extractErrorMessage(err as Error)}`); }
   }
 
-  private setUpServer() {
-    this.app.listen(this.port, () => this.zLog.info(`server ${process.pid} @${this.__ip} listening on port ${this.port}...`));
+  private __listen() {
+    this.server.listen(this.port, this.__hostname, () => this.zLog.info(`${this.__hostname} on process ${process.pid} listening on port ${this.port}...`));
   }
 
-  private setUpWorkers() {
+  private __setUpWorkers() {
     const fork = () => {
       const f = cluster.fork();
       f.on('message', message => this.zLog.debug(message));
     }
 
-    this.zLog.info(`server @${this.__ip} setting up ${this.numOfCpus} cpus as workers.\n`);
+    this.zLog.info(`setting up ${this.numOfCpus} cpus as workers.\n`);
     for (let cpu = 0; cpu < this.numOfCpus; cpu++) { fork(); }
 
     cluster.on('online', worker => this.zLog.info(`Worker ${worker.process.pid} is online.`));
@@ -153,17 +137,5 @@ export abstract class Server<T extends string> {
       this.zLog.warn('starting new worker...');
       fork();
     });
-  }
-
-  private initIpAddress() {
-    try {
-      this.__ip = Object
-        .keys(networkInterfaces())
-        .map(key => { if (/(eth[0-9]{1}|enp[0-9]{1}s[0-9]{1})/.test(key)) return networkInterfaces()[key][0].address; })
-        .filter(el => el)[0];
-    } catch (err) {
-      this.zLog.error(`unable to select network interface: ${err}`);
-      process.exit(1);
-    }
   }
 }

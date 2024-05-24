@@ -50,6 +50,3 @@ to stop the services, run:
 ```bash
 ./stopDev.sh
 ```
-
-
-## production

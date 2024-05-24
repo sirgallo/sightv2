@@ -13,7 +13,19 @@ then
   if [ "$database" == "yes" ]
   then
     docker compose -f docker-compose.db.yml up --build -d
-    docker exec -it sight_db_replica_0 /scripts/rs-init.sh
+   
+    echo "seed database with sight user and sight db?: (yes or no)"
+    read seed
+    
+    if [ "$seed" == "yes" ]
+    then
+      docker exec -it sight_db_replica_0 /scripts/rs-init.sh
+    elif [ "$seed" == "no" ]
+    then
+      echo "skipping seeding of database"
+    else
+      echo "invalid input for seed"
+    fi
   elif [ "$database" == "no" ]
   then
     echo "database not selected for build"

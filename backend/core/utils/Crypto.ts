@@ -1,5 +1,5 @@
 import { compare, hash } from 'bcrypt';
-import { createHash, randomBytes } from 'crypto';
+import { BinaryToTextEncoding,  createHash, randomBytes } from 'crypto';
 
 import { LogProvider } from '../log/LogProvider.js';
 import { NodeUtil } from './Node.js';
@@ -10,7 +10,7 @@ export class CryptoUtil {
   static generateHash = (opts: HashOpts): HashResult => {
     try {
       const hasher = createHash(opts.algorithm);
-      hasher.update(opts.data);
+      hasher.update(opts.data, 'utf-8');
       
       if (opts.format === 'bytes') return hasher.digest();
       return hasher.digest(opts.format);
@@ -46,8 +46,8 @@ export class CryptoUtil {
 
 
 type CRYPTO_INPUTS = {
-  ALGORITHM: 'sha128' | 'sha256';
-  FORMAT: 'bytes' | 'hex';
+  ALGORITHM: 'sha256';
+  FORMAT: BinaryToTextEncoding | 'bytes';
 };
 
 export interface HashOpts { 

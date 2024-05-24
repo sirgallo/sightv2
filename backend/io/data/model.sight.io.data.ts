@@ -1,27 +1,31 @@
-import { CryptoUtil } from '../../core/utils/Crypto.js';
-import { IEntity, IModel, IRelationship } from '../../db/models/Model.js';
-import { AuthIOData } from './auth.sight.io.data.js';
+import { IACL } from '../../db/models/ACL.js';
+import { IEntity, IModel, IRelationship, RelationshipType } from '../../db/models/Model.js';
+import { IOrg } from '../../db/models/Org.js';
 
 
 export class ModelIOData {
-  static models(): IModel[] {
-    const orgs = AuthIOData.orgs();
-    const acls = AuthIOData.acls();
+  static data(opts: { orgs: IOrg[], acls: IACL[] }): { models: IModel[], entities: IEntity[], relationships: IRelationship<RelationshipType>[] } {
+    const models = ModelIOData.models(opts);
+    const entities = ModelIOData.entities(models);
+    const relationships = ModelIOData.directedRelationships({ models, entities });
 
+    return { models, entities, relationships };
+  }
+
+  private static models(opts: { orgs: IOrg[], acls: IACL[] }): IModel[] {
     return [
-      { modelId: CryptoUtil.generateSecureUUID(), orgId: orgs[0].orgId, aclId: acls[0].aclId },
-      { modelId: CryptoUtil.generateSecureUUID(), orgId: orgs[0].orgId, aclId: acls[1].aclId },
-      { modelId: CryptoUtil.generateSecureUUID(), orgId: orgs[1].orgId, aclId: acls[2].aclId },
-      { modelId: CryptoUtil.generateSecureUUID(), orgId: orgs[0].orgId, aclId: acls[3].aclId },
-      { modelId: CryptoUtil.generateSecureUUID(), orgId: orgs[1].orgId, aclId: acls[4].aclId },
+      { modelId: 'c18e95b8-746f-4b00-b7eb-c448db0fdf52', orgId: opts.orgs[0].orgId, aclId: opts.acls[0].aclId },
+      { modelId: 'f38660b7-97fd-4b54-b0e3-f280b8d0c5d9', orgId: opts.orgs[0].orgId, aclId: opts.acls[1].aclId },
+      { modelId: '590970a2-209b-48f8-b774-7cd76f603efa', orgId: opts.orgs[1].orgId, aclId: opts.acls[2].aclId },
+      { modelId: '40fcbca1-3508-4b10-8364-9776ab139a4b', orgId: opts.orgs[0].orgId, aclId: opts.acls[3].aclId },
+      { modelId: '4e67fefd-45dd-4b68-95c6-d66be86610b3', orgId: opts.orgs[1].orgId, aclId: opts.acls[4].aclId },
     ];
   }
 
-  static entities(): IEntity[] {
-    const models = ModelIOData.models();
+  private static entities(models: IModel[]): IEntity[] {
     return [
       {
-        objectId: CryptoUtil.generateSecureUUID(),
+        objectId: '758f531b-085d-453d-8629-a87ec5647764',
         modelId: models[0].modelId,
         label: 'org',
         sourceId: null,
@@ -46,7 +50,7 @@ export class ModelIOData {
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
+        objectId: '4c6d7c42-bd3e-4b13-9436-ff35e7fcc46f',
         modelId: models[0].modelId,
         label: 'factory',
         sourceId: null,
@@ -71,7 +75,7 @@ export class ModelIOData {
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
+        objectId: 'a0b1a9e1-dd1d-4eeb-b4c5-1facd2407d91',
         modelId: models[0].modelId,
         label: 'process',
         sourceId: null,
@@ -108,7 +112,7 @@ export class ModelIOData {
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
+        objectId: 'b4bc2baf-79b1-4fb0-a8b8-0437af8b9a52',
         modelId: models[0].modelId,
         label: 'earningsReport',
         sourceId: null,
@@ -149,7 +153,7 @@ export class ModelIOData {
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
+        objectId: '699c83b6-1d3f-4255-a754-e124e8dac6ce',
         modelId: models[0].modelId,
         label: 'product',
         sourceId: null,
@@ -196,68 +200,65 @@ export class ModelIOData {
     ];
   }
 
-  static directedRelationships(): IRelationship<'directed'>[] {
-    const models = ModelIOData.models();
-    const entities = ModelIOData.entities();
-
+  private static directedRelationships(opts: { models: IModel[], entities: IEntity[] }): IRelationship<'directed'>[] {
     return [
       {
-        objectId: CryptoUtil.generateSecureUUID(),
-        modelId: models[0].modelId,
+        objectId: '1b05f66c-b087-476c-b5f6-3849af57eadd',
+        modelId: opts.models[0].modelId,
         label: 'manufactures',
         sourceId: null,
         v: 0,
         metadata: {
-          sources: [ entities[1].objectId ],
-          dests: [ entities[4].objectId ],
+          sources: [ opts.entities[1].objectId ],
+          dests: [ opts.entities[4].objectId ],
           rType: 'directed'
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
-        modelId: models[0].modelId,
+        objectId: '5ffc6af4-284c-4fd5-9b07-4f621b2ba976',
+        modelId: opts.models[0].modelId,
         label: 'builds',
         sourceId: null,
         v: 0,
         metadata: {
-          sources: [ entities[0].objectId ],
-          dests: [ entities[1].objectId, entities[2].objectId, entities[4].objectId ],
+          sources: [ opts.entities[0].objectId ],
+          dests: [ opts.entities[1].objectId, opts.entities[2].objectId, opts.entities[4].objectId ],
           rType: 'directed'
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
-        modelId: models[0].modelId,
+        objectId: '9499727e-7ac9-4bd0-ae71-d9355f832390',
+        modelId: opts.models[0].modelId,
         label: 'audits',
         sourceId: null,
         v: 0,
         metadata: {
-          sources: [ entities[3].objectId ],
-          dests: [ entities[0].objectId, entities[1].objectId ],
+          sources: [ opts.entities[3].objectId ],
+          dests: [ opts.entities[0].objectId, opts.entities[1].objectId ],
           rType: 'directed'
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
-        modelId: models[0].modelId,
+        objectId: '0e9e0b98-84ae-44d5-a7c6-728ece9fb9ae',
+        modelId: opts.models[0].modelId,
         label: 'defines',
         sourceId: null,
         v: 0,
         metadata: {
-          sources: [ entities[2].objectId ],
-          dests: [ entities[0].objectId, entities[1].objectId ],
+          sources: [ opts.entities[2].objectId ],
+          dests: [ opts.entities[0].objectId, opts.entities[1].objectId ],
           rType: 'directed'
         }
       },
       {
-        objectId: CryptoUtil.generateSecureUUID(),
-        modelId: models[0].modelId,
+        objectId: '38fd0206-a675-492c-9d27-6d5c924e296a',
+        modelId: opts.models[0].modelId,
         label: 'influences',
         sourceId: null,
         v: 0,
         metadata: {
-          sources: [ entities[4].objectId ],
-          dests: [ entities[0].objectId, entities[3].objectId ],
+          sources: [ opts.entities[4].objectId ],
+          dests: [ opts.entities[0].objectId, opts.entities[3].objectId ],
           rType: 'directed'
         }
       }

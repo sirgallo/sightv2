@@ -6,6 +6,5 @@ export interface MongoUri {
 }
 
 export interface MongoOpts {
-  io: boolean;
   override?: ConnectOptions;
 }

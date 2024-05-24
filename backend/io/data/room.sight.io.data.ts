@@ -9,9 +9,7 @@ import { AuthIOData } from './auth.sight.io.data.js';
 
 export class RoomIOData {
   static rooms(): { roomId: string, roomType: RoomAccess }[] {
-    const orgs = AuthIOData.orgs();
-    const users = AuthIOData.users();
-    
+    const { orgs, users } = AuthIOData.data();
     return [
       { roomId: orgs[0].orgId, roomType: 'org' },
       { roomId: orgs[1].orgId, roomType: 'org' },
@@ -22,7 +20,7 @@ export class RoomIOData {
   }
 
   static connect(): BroadcastRoomConnect[] {
-    return RoomIOData.rooms().map(room => ({ roomId: room.roomId, db: 'io_broadcast', roomType: room.roomType, token: null }));
+    return RoomIOData.rooms().map(room => ({ roomId: room.roomId, db: 'room_cache', roomType: room.roomType, token: null }));
   }
 
   static data(): { [roomId: string]: BroadcastRoomData<MockRoomDataPayload>[] } {
@@ -33,7 +31,7 @@ export class RoomIOData {
           event: 'DATA',
           role: 'ANALYST',
           payload: { 
-            message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha128', format: 'hex' }) as string,
+            message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha256', format: 'hex' }) as string,
             timestamp: new Date() 
           }
         };
@@ -45,7 +43,7 @@ export class RoomIOData {
           event: 'DATA',
           role: 'ARCHITECT',
           payload: { 
-            message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha128', format: 'hex' }) as string,
+            message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha256', format: 'hex' }) as string,
             timestamp: new Date() 
           }
         };
@@ -57,7 +55,7 @@ export class RoomIOData {
           event: 'DATA',
           role: 'ADMIN',
           payload: { 
-            message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha128', format: 'hex' }) as string,
+            message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha256', format: 'hex' }) as string,
             timestamp: new Date() 
           }
         };

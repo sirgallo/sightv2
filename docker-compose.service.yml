@@ -41,9 +41,6 @@ x-variables:
       dockerfile: ./backend/broadcast/Dockerfile
     ports:
       - '1000'
-      - '1001'
-      - '1002'
-      - '1003'
     healthcheck:
       test: curl --fail http://localhost:1000/broadcast/poll || kill 1
       interval: 30s

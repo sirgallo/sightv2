@@ -1,3 +1,7 @@
+import { Server as HttpServer } from 'http';
+import { NextFunction, Request, Response } from 'express';
+import { hostname } from 'os';
+import { join } from 'path';
 import { Server, Socket } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 
@@ -5,41 +9,74 @@ import { LogProvider } from '../../core/log/LogProvider.js';
 import { JWTMiddleware, JWTVerifyPayload } from '../../core/middleware/JWTMiddleware.js';
 import { ACLMiddleware } from '../../core/middleware/ACLMiddleware.js';
 import { NodeUtil } from '../../core/utils/Node.js';
-import { BroadcastDb, broadcastDbs } from '../../core/data/types/Redis.js';
 import { MemcacheProvider } from '../../core/data/providers/MemcacheProvider.js';
-import { socketConfigurations } from '../../ServerConfigurations.js';
+import { serverConfigurations } from '../../ServerConfigurations.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { IUser } from '../../db/models/User.js';
 import { BroadcastOpts, BroadcastRoomConnect, BroadcastRoomData, broadcastEventMap } from '../types/Broadcast.js';
+import { pathSuffix } from '../types/Client.js';
 
 
 export class BroadcastProvider {
+  private __io: Server;
   private __memcache: MemcacheProvider;
-  private __connectorMap: Map<BroadcastDb, Server> = new Map();
   private __jwtMiddleware = new JWTMiddleware({ secret: envLoader.JWT_SECRET, timespanInSec: envLoader.JWT_TIMEOUT });
   private __zLog = new LogProvider(BroadcastProvider.name);
 
-  constructor(opts: BroadcastOpts) {
-    this.initialize(opts);
+  constructor(private __server: HttpServer, private __opts: BroadcastOpts) {
+    this.__memcache = new MemcacheProvider({ db: 'room_cache', expirationInSec: envLoader.JWT_TIMEOUT, ...this.__opts }); // connect to redis memcache
+    this.__initialize();
   }
 
-  listen() { // for each connector, listen for new socket connections and determine how to add to rooms
-    this.__connectorMap.forEach((io: Server, db: BroadcastDb) => {
-      io.listen(socketConfigurations.broadcast[db]);
-      io.on('connection', socket => this.handleConnection(socket, db));
-      this.__zLog.info(`listening for connections on db: ${db}`);
+  private __initialize() {  
+    const origin = `https://${envLoader.SIGHT_PLATFORM_ENDPOINT}`;
+    const path = join(serverConfigurations.broadcast.root, pathSuffix);
+    this.__zLog.info(`path for websocket server: ${path}`);
+    
+    this.__io = new Server({ 
+      path, 
+      pingInterval: 20000, 
+      pingTimeout: 60000, 
+      allowUpgrades: true, 
+      transports: [ 'polling', 'websocket' ],
+      cors: { 
+        origin, 
+        methods: [ 'GET', 'POST' ],
+        credentials: true
+      },
+      cookie: {
+        name: hostname(),
+        httpOnly: true,
+        sameSite: true,
+        maxAge: 86400
+      }
+    });
+
+    this.__io.listen(this.__server);
+    this.__io.adapter(createAdapter(this.__memcache.client.duplicate(), this.__memcache.client.duplicate()));
+    this.__io.on('connection', socket => {
+      this.__zLog.info(`socket connection made with id ${socket.id}`);
+      this.__handleConnection(socket);
+    });
+
+    this.__io.on('error', err => {
+      this.__zLog.error(`io error: ${NodeUtil.extractErrorMessage(err)}`);
+    });
+    
+    this.__io.engine.use(async (req: Request & { _query?: { sid?: any } & any }, res: Response, next: NextFunction) => {
+      try {
+        this.__zLog.info(`request in middleware: ${JSON.stringify(req, null, 2)}`);
+        const isHandshake = req._query.sid === undefined;
+        if (isHandshake) await this.__jwtMiddleware.authenticate(req, res, next);
+        else next();
+      } catch(err) {
+        this.__zLog.error(`middleware err: ${NodeUtil.extractErrorMessage(err)}`);
+        throw err;
+      }
     });
   }
 
-  private initialize(opts: BroadcastOpts) {
-    for (const db of broadcastDbs) { // for each db start a listener, both pub sub on redis and socket
-      this.__memcache = new MemcacheProvider({ db: 'room_cache', expirationInSec: envLoader.JWT_TIMEOUT, ...opts });
-      this.__connectorMap.set(db, new Server({ adapter: createAdapter(this.__memcache.client, this.__memcache.client.duplicate()) }));
-      this.__zLog.info(`${db} --> initialized`)
-    }
-  }
-
-  private handleConnection<T extends BroadcastDb>(socket: Socket, db: T) {
+  private async __handleConnection<T>(socket: Socket) {
     socket.on(broadcastEventMap.JOIN, async (opts: BroadcastRoomConnect) => {
       try { // map the incoming socket id to the room - socket map and join the db
         const { verified, payload } = await this.checkAuth(opts.token); // check incoming auth token
@@ -48,7 +85,7 @@ export class BroadcastProvider {
 
         const token = (() => {
           if (! payload.newToken) return opts.token;
-          socket.emit(broadcastEventMap.REFRESH, payload.newToken);
+          this.__io.to(socket.id).emit(broadcastEventMap.REFRESH, payload.newToken);
           return payload.newToken;
         })();
 
@@ -59,9 +96,10 @@ export class BroadcastProvider {
         const socketIds = [ socket.id, ...roomMetadata.socketIds ];
         await this.__memcache.hset({ key: opts.roomId, value: socketIds })
 
-        socket.join(db);
+        socket.join(socket.id);
+        this.__zLog.info(`${socket.id} joined room --> ${opts.roomId}`);
       } catch (err) {
-        socket.emit(broadcastEventMap.ERROR, opts.roomId, `authentication failed for socket id: ${socket.id}`);
+        this.__zLog.error(`error for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
         throw err;
       }
     });
@@ -70,53 +108,55 @@ export class BroadcastProvider {
       const { roomId, event, payload } = msg;
       try {
         const roomMetadata: { socketIds: string[] } = await this.__memcache.hgetall(roomId) ?? { socketIds: [] };
-        
-        const updatedSocketIds: string[] = [];
-        for (const socketId of roomMetadata.socketIds) { 
-          const userMeta: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'> & { token: string } = await this.__memcache.hgetall(socketId);
-          if (! userMeta) {  
-            socket.to(socketId).emit(broadcastEventMap.ERROR, `user metadata does not exist for socket id: ${socket.id}`);
-            continue;
-          } 
-          
-          const authPayload = await this.checkAuth(userMeta.token);
-          if (! authPayload.verified) {
-            socket.to(socketId).emit(broadcastEventMap.ERROR, roomId, `supplied token failed verification: ${socket.id}`);
-          } else if (! ACLMiddleware.isEligible({ incoming: userMeta.role, expected: msg.role })) {
-            socket.to(socketId).emit(broadcastEventMap.ERROR, roomId, `role is not eligble for message minimum role, filtering results for: ${socket.id}`);
-          } else { 
-            const newToken = authPayload.payload.newToken;
-            if (newToken) socket.to(socketId).emit(broadcastEventMap.REFRESH, newToken);
 
-            socket.to(socketId).emit(event, payload); 
-            updatedSocketIds.push(socketId);
+        const updatedSocketIds: string[] = (await Promise.all(roomMetadata.socketIds.map(async socketId => {
+          try {
+            const userMeta: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'> & { token: string } = await this.__memcache.hgetall(socketId);
+            if (! userMeta) {  
+              this.__io.to(socketId).emit(broadcastEventMap.ERROR, `user metadata does not exist for socket id: ${socket.id}`);
+              return null;
+            } 
+            
+            const authPayload = await this.checkAuth(userMeta.token);
+            if (! authPayload.verified) {
+              this.__zLog.warn(`token did not pass verification, ${socketId} leaving room ${roomId}`);
+              this.__io.to(socketId).emit(broadcastEventMap.LEAVE, roomId);
+            } else if (! ACLMiddleware.isEligible({ incoming: userMeta.role, expected: msg.role })) {
+              this.__zLog.warn(`role is not eligble for message minimum role, filtering results for: ${socket.id}`);
+            } else { 
+              const newToken = authPayload.payload.newToken;
+              if (newToken) this.__io.to(socketId).emit(broadcastEventMap.REFRESH, newToken);
+  
+              this.__io.to(socketId).emit(event, payload); 
+              return socketId;
+            }
+          } catch (err) {
+            this.__zLog.error(`error validating socket: ${NodeUtil.extractErrorMessage(err)}`);
+            throw err;
           }
-        }
+        }))).filter(el => el);
 
         await this.__memcache.hset({ key: roomId, value: updatedSocketIds });
       } catch (err) {
-        socket.emit(broadcastEventMap.ERROR, roomId, `socket data error for socket id: ${socket.id}`);
+        this.__zLog.error(`socketId ${socket.id} err: ${NodeUtil.extractErrorMessage(err)}`);
+        this.__io.to(socket.id).emit(broadcastEventMap.LEAVE, roomId);
         throw err;
       }
-    });
-
-    socket.on(broadcastEventMap.ERROR, (roomId: string, errMsg: string) => { // handle all socket level errors here and leave the room on error
-      this.__zLog.error(`socket error: ${errMsg}`);
-      socket.emit(broadcastEventMap.LEAVE, roomId);
     });
   
     socket.on(broadcastEventMap.LEAVE, async (roomId: string) => {
       try {
         const rootMeta: { socketIds: string[] } = await this.__memcache.hgetall(roomId) ?? { socketIds: [] };
         const socketIdIndex = rootMeta.socketIds.findIndex(id => id === socket.id);
-        if (socketIdIndex !== -1) {
-          if (rootMeta.socketIds.length <= 1) { 
-            await this.__memcache.hdel(roomId); 
-          } else {
-            const updatedSocketIds = [ ...rootMeta.socketIds.slice(0, socketIdIndex), ...rootMeta.socketIds.slice(socketIdIndex + 1) ];
-            await this.__memcache.hset({ key: roomId, value: updatedSocketIds });
-          }
-        } else { await this.__memcache.hdel(roomId); }
+        if (socketIdIndex === -1 || rootMeta.socketIds.length <= 1) {
+          await this.__memcache.hdel(roomId); 
+        } else {
+          const updatedSocketIds = [ ...rootMeta.socketIds.slice(0, socketIdIndex), ...rootMeta.socketIds.slice(socketIdIndex + 1) ];
+          await this.__memcache.hset({ key: roomId, value: updatedSocketIds });
+        }
+
+        this.__zLog.info(`${socket.id} left room --> ${roomId}`);
+        socket.leave(socket.id);
       } catch (err) {
         this.__zLog.error(`socket leave error: ${NodeUtil.extractErrorMessage(err)}`);
         socket.disconnect();
@@ -134,3 +174,10 @@ export class BroadcastProvider {
     }
   }
 }
+
+/*
+  Broadcast:
+
+    The Broadcast service aims to be scalable
+
+*/

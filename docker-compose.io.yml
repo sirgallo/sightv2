@@ -1,9 +1,20 @@
 x-variables:
+  election_timeout: &election_timeout '--election-timeout=2000'
+  heartbeat_interval: &heartbeat_interval '--heartbeat-interval=200'
+  initial_cluster: &initial_cluster '--initial-cluster=sight_etcd_0=http://sight_etcd_0:2380'
+  initial_cluster_state: &initial_cluster_state '--initial-cluster-state=new'
+  initial_cluster_token: &initial_cluster_token '--initial-cluster-token=secrettoken'
+  listen_peer_urls: &listen_peer_urls '--listen-peer-urls=http://0.0.0.0:2380'
+  listen_client_urls: &listen_client_urls '--listen-client-urls=http://0.0.0.0:2379'
+  peer-trusted-ca-file: &peer-trusted-ca-file '--peer-trusted-ca-file=${HOME}/sight/certs/ca.crt'
+  auto-tls: &auto-tls '--auto-tls'
+  peer-auto-tls: &peer-auto-tls '--peer-auto-tls'
+
   common_api_settings: &common_api_settings
     deploy:
       resources:
         limits:
-          memory: 250M
+          memory: 500M
         reservations:
           memory: 250M
     environment:
@@ -17,22 +28,10 @@ x-variables:
       - SIGHT_DB_PASS=${SIGHT_DB_PASS}
       - SIGHT_ETCD_HOSTS=${SIGHT_ETCD_HOSTS}
       - NODE_ENV=docker
-      - NODE_OPTIONS="--max-old-space-size=4096"
     networks:
       api_layer:
       data_layer:
-    restart: always
-  common_proxy_settings: &common_proxy_settings
-    image: sight_proxy_img
-    hostname: ${HOSTNAME}
-    deploy:
-      resources:
-        limits:
-          memory: 250M
-        reservations:
-          memory: 250M
-    volumes:
-      - $HOME/sight/certs/haproxy:/certs
+    
   common_broadcast_settings: &common_broadcast_settings
     <<: *common_api_settings
     image: 'sight_broadcast_img'
@@ -41,14 +40,7 @@ x-variables:
       dockerfile: ./backend/broadcast/Dockerfile
     ports:
       - '1000'
-      - '1001'
-      - '1002'
-      - '1003'
-    healthcheck:
-      test: curl --fail http://localhost:1000/broadcast/poll || kill 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
+
   common_gateway_settings: &common_gateway_settings
     <<: *common_api_settings
     image: 'sight_gateway_img'
@@ -57,24 +49,26 @@ x-variables:
       dockerfile: ./backend/gateway/Dockerfile
     ports:
       - '1234'
-    healthcheck:
-      test: curl --fail http://localhost:1234/gateway/poll || kill 1
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 services:
   sight_io_proxy: 
-    <<: *common_proxy_settings
+    image: sight_proxy_img
     container_name: sight_io_proxy
+    hostname: ${HOSTNAME}
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+        reservations:
+          memory: 250M
     build:
       context: .
       dockerfile: ./lb/Dockerfile.io
     volumes:
       - $HOME/sight/certs/haproxy:/certs
+      - $HOME/sight/sight_io_proxy/log:/var/log/haproxy
     ports: 
       - '443:443'
-      - '27017:27017'
     networks:
       api_layer:
       data_layer:
@@ -82,26 +76,10 @@ services:
     <<: *common_broadcast_settings
     hostname: sight_broadcast_0
     container_name: sight_broadcast_0
-  sight_broadcast_1:
-    <<: *common_broadcast_settings
-    hostname: sight_broadcast_1
-    container_name: sight_broadcast_1
-  sight_broadcast_2:
-    <<: *common_broadcast_settings
-    hostname: sight_broadcast_2
-    container_name: sight_broadcast_2
   sight_gateway_0:
     <<: *common_gateway_settings
     hostname: sight_gateway_0
     container_name: sight_gateway_0
-  sight_gateway_1:
-    <<: *common_gateway_settings
-    hostname: sight_gateway_1
-    container_name: sight_gateway_1
-  sight_gateway_2:
-    <<: *common_gateway_settings
-    hostname: sight_gateway_2
-    container_name: sight_gateway_2
 
 networks:
   api_layer:

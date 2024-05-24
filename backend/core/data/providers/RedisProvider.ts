@@ -77,6 +77,6 @@ export class RedisProvider {
 
     return listAsString?.split(',').map((host: string): ClusterNode => {
       return { host: host.trim(), port }
-    })
+    });
   }
 }

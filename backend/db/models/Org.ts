@@ -1,9 +1,7 @@
 import { Schema, Document } from 'mongoose';
 
 
-export const UserCollectionName = 'user';
-export const TokenCollectionName = 'token';
-
+export const OrgCollectionName = 'org';
 
 export type Subscription = 'hosted' | 'organization' | 'individual' | 'trial';
 
@@ -33,7 +31,7 @@ export const OrgSchema: Schema<OrgDocument> = new Schema({
   industry: { type: String, required: true, unique: false },
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
-  collection: UserCollectionName,
+  collection: OrgCollectionName,
   minimize: false
 });
 

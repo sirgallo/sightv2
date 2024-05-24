@@ -9,7 +9,7 @@ var config = {
     {
       "_id": 1,
       "host": "sight_db_replica_0:27017",
-      "priority": 1
+      "priority": 3
     },
     {
       "_id": 2,
@@ -46,6 +46,7 @@ db.createUser({
 
 db.createCollection('model', { capped: false });
 db.createCollection('entity', { capped: false });
+db.createCollection('org', { capped: false });
 db.createCollection('relationship', { capped: false });
 db.createCollection('search', { capped: false });
 db.createCollection('source', { capped: false });

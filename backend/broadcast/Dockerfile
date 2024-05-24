@@ -10,6 +10,6 @@ COPY ./backend/broadcast ./broadcast
 
 RUN npm run build:all
 
-EXPOSE 1000 1001 1002 1003
+EXPOSE 1000
 
 CMD [ "npm", "run", "start:broadcast" ]
