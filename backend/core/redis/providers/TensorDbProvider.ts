@@ -20,7 +20,6 @@ export class TensorDbProvider {
     this.__memcache = new MemcacheProvider({
       db: 'tensor_cache',
       prefix: TENSOR_CONSTANTS.PREFIX.METADATA,
-      expirationInSec: 10000,
       connOpts: this.opts.connOpts 
     });
   }

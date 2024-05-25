@@ -5,6 +5,7 @@ const { sign, verify } = jsonwebtoken;
 import { LogProvider } from '../log/LogProvider.js';
 import { NodeUtil } from '../utils/Node.js';
 import { Connection } from '../../common/Connection.js';
+import { envLoader } from '../../common/EnvLoader.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
 import { IToken, IUser } from '../../db/models/User.js';
 
@@ -46,9 +47,9 @@ export class JWTMiddleware {
       const verifyWrapper = () => verify(token, secret, opts);
       sightDb = await Connection.mongo();
 
-      const { id } = await NodeUtil.wrapAsync(verifyWrapper) as jsonwebtoken.JwtPayload;
+      const { id, exp } = await NodeUtil.wrapAsync(verifyWrapper) as jsonwebtoken.JwtPayload;
       const { userId, displayName, orgId, role }: IUser = await sightDb.user.findOne({ userId: id });
-      return { user: { userId, displayName, orgId, role } };
+      return { user: { userId, displayName, orgId, role }, exp };
     } catch (err) {
       this.__zLog.error(`decode error: ${NodeUtil.extractErrorMessage(err)}`);
       if (err instanceof jsonwebtoken.TokenExpiredError && ! opts) { return this.handleRefreshToken(token, sightDb); }
@@ -63,7 +64,7 @@ export class JWTMiddleware {
     if (! refreshToken) throw new Error('no valid refresh token');
 
     const newToken = await this.sign(user.userId);
-    return { user, newToken };
+    return { user, newToken, exp: envLoader.JWT_REFRESH_TIMEOUT };
   }
 }
 
@@ -75,5 +76,6 @@ export interface JWTOpts {
 
 export interface JWTVerifyPayload { 
   user: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'>,
-  newToken?: string
+  exp: number;
+  newToken?: string;
 }

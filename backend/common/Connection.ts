@@ -22,7 +22,7 @@ export class Connection {
 
   static memcache(opts: { db: ServiceDbMap<'memcache'>, prefix: string }) {
     return new MemcacheProvider({
-      db: opts.db, prefix: opts.prefix, expirationInSec: 10000,
+      db: opts.db, prefix: opts.prefix,
       connOpts: { nodes: defaultClusterNodes(), cluster: DEFAULT_CLUSTER_OPTIONS }
     });
   }

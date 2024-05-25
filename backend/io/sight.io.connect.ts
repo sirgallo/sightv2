@@ -27,14 +27,14 @@ export class SightIOConnection {
 
   static publisher(token: string) {
     return new PublisherProvider(
-      { db: 'room_cache', token, keepAlive: true, conn: { protocol: 'https', endpoint: hostname() } }, 
+      { db: 'room_cache', token, keepAlive: true }, 
       new LogProvider(`${SightIOConnection.name}:${this.publisher.name}`)
     );
   }
 
   static subscriber(token: string, event: RoomEvent) {
     return new SubscriberProvider(
-      { db: 'room_cache', token, event, keepAlive: true, conn: { protocol: 'https', endpoint: hostname() } }, 
+      { db: 'room_cache', token, event, keepAlive: true }, 
       new LogProvider(`${SightIOConnection.name}:${this.subscriber.name}`)
     );
   }

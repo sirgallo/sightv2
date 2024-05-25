@@ -10,6 +10,6 @@ export class PublisherProvider extends ClientProvider {
   }
   
   async publish<T>(msg: BroadcastRoomData<T>) {
-    this.clientEmit(msg.event, msg);
+    this.send(msg);
   }
 }

@@ -8,23 +8,12 @@ import { AuthIOData } from './auth.sight.io.data.js';
 
 
 export class RoomIOData {
-  static rooms(): { roomId: string, roomType: RoomAccess }[] {
-    const { orgs, users } = AuthIOData.data();
-    return [
-      { roomId: orgs[0].orgId, roomType: 'org' },
-      { roomId: orgs[1].orgId, roomType: 'org' },
-      { roomId: users[0].userId, roomType: 'user' },
-      { roomId: users[1].userId, roomType: 'user' },
-      { roomId: users[2].userId, roomType: 'user' },
-    ]
+  static connect(rooms: { roomId: string, roomType: RoomAccess }[]): BroadcastRoomConnect[] {
+    return rooms.map(room => ({ roomId: room.roomId, db: 'room_cache', roomType: room.roomType, token: null }));
   }
 
-  static connect(): BroadcastRoomConnect[] {
-    return RoomIOData.rooms().map(room => ({ roomId: room.roomId, db: 'room_cache', roomType: room.roomType, token: null }));
-  }
-
-  static data(): { [roomId: string]: BroadcastRoomData<MockRoomDataPayload>[] } {
-    return transform(RoomIOData.rooms(), (acc, room) => {
+  static data(rooms: { roomId: string, roomType: RoomAccess }[]): { [roomId: string]: BroadcastRoomData<MockRoomDataPayload>[] } {
+    return transform(rooms, (acc, room) => {
       const analystPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
           roomId: room.roomId, 

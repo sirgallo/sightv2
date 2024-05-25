@@ -20,11 +20,11 @@ export class MemcacheProvider<PRF extends string = undefined>{
     return this.__removeClient();
   }
 
-  async set(opts: { key: string, value: string, expire?: boolean }): Promise<boolean> {
-    const handler = async (opts: { key: string, value: string, expire?: boolean }): Promise<boolean> => {
+  async set(opts: { key: string, value: string, expirationInSec?: number }): Promise<boolean> {
+    const handler = async (opts: { key: string, value: string, expirationInSec?: number }): Promise<boolean> => {
       const prefixedKey = this.__prefixedKey(opts.key);
       await this.client.set(prefixedKey, opts.value);
-      if (opts.expire) await this.client.expire(prefixedKey, this.__opts.expirationInSec);
+      if (opts.expirationInSec) await this.client.expire(prefixedKey, opts.expirationInSec);
       return true;
     };
 
@@ -51,11 +51,11 @@ export class MemcacheProvider<PRF extends string = undefined>{
     return this.__execCmd(handler, key);
   }
 
-  async hset<T extends { [field: string]: any } = undefined>(opts: { key: string, value: T, expire?: boolean }): Promise<boolean> {
-    const handler = async (opts: { key: string, value: T, expire?: boolean }): Promise<boolean> => {
+  async hset<T extends { [field: string]: any } = undefined>(opts: { key: string, value: T, expirationInSec?: number }): Promise<boolean> {
+    const handler = async (opts: { key: string, value: T, expirationInSec?: number }): Promise<boolean> => {
       const prefixedKey = this.__prefixedKey(opts.key);
       await this.client.hset(prefixedKey, opts.value);
-      if (opts.expire) await this.client.expire(prefixedKey, this.__opts.expirationInSec);
+      if (opts.expirationInSec) await this.client.expire(prefixedKey, opts.expirationInSec);
       return true;
     };
     
