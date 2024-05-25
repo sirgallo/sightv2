@@ -5,14 +5,14 @@ import { LogProvider } from '../../core/log/LogProvider.js';
 import { NodeUtil } from '../../core/utils/Node.js';
 import { BackoffUtil } from '../../core/utils/Backoff.js';
 import { envLoader } from '../../common/EnvLoader.js';
-import { ClientOpts, pathSuffix, Protocol, SocketEndpoint } from '../types/Client.js';
-import { BroadcastEvent, broadcastEventMap, BroadcastRoomConnect, BroadcastRoomData, clientEventMap } from '../types/Broadcast.js';
+import { ClientOpts, Protocol, SocketEndpoint } from '../types/Client.js';
+import { RoomEvent, BroadcastRoomConnect, BroadcastRoomData, EVENT_MAP } from '../types/Broadcast.js';
 
 
 export abstract class ClientProvider {
   private __socket: Socket;
   private __endpoint: SocketEndpoint<Protocol>;
-
+ 
   constructor(protected opts: ClientOpts, protected zLog: LogProvider, private __backoffTimeout = 250) {
     this.__endpointResolver(this.opts.conn);
     this.__initialize();
@@ -20,64 +20,68 @@ export abstract class ClientProvider {
 
   get endpoint() { return this.__endpoint; }
 
-  async listen(listenOpts: Pick<BroadcastRoomConnect, 'roomId' | 'roomType' | 'token'>) {
-    this.__socket.on('connect', () => {
+  listen(listenOpts: Pick<BroadcastRoomConnect, 'roomId' | 'roomType' | 'token'>) {
+    this.__socket.on(EVENT_MAP.io.connect, () => {
       this.zLog.info(`connection to ${this.__endpoint} made successfully`);
 
-      this.__socket.io.engine.once('upgrade', () => {
+      this.__socket.io.engine.once(EVENT_MAP.io.upgrade, () => {
         this.zLog.info(`upgraded transport layer: ${this.__socket.io.engine.transport.name}`); // called when the transport is upgraded (i.e. from HTTP long-polling to WebSocket)
       });
 
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db };
       this.zLog.info(`attempt room join with: ${JSON.stringify(connectOpts, null, 2)}`);
-      this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
+      this.__socket.emit(EVENT_MAP.room.join, connectOpts);
     });
 
-    this.__socket.on(clientEventMap.disconnect, (reason: Socket.DisconnectReason) => {
-      this.zLog.info(`${clientEventMap.disconnect}:${this.__socket.id}`);
+    this.__socket.on(EVENT_MAP.io.disconnect, (reason: Socket.DisconnectReason) => {
+      this.zLog.info(`${EVENT_MAP.io.disconnect}:${this.__socket.id}`);
       this.zLog.debug(`reason: ${reason}`);
-      if (this.opts.keepAlive) this.__socket.emit(clientEventMap.reconnect)
+      if (this.opts.keepAlive) this.__socket.emit(EVENT_MAP.io.reconnect)
     });
 
-    this.__socket.on(broadcastEventMap.REFRESH, (token: string) => {
+    this.__socket.on(EVENT_MAP.io.refresh, (token: string) => {
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db, token };
-      this.__socket.emit(broadcastEventMap.LEAVE);
-      this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
+      this.__socket.emit(EVENT_MAP.room.leave);
+      this.__socket.emit(EVENT_MAP.room.join, connectOpts);
     });
 
-    this.__socket.io.on(clientEventMap.reconnect_attempt, async attempt => {
-      this.zLog.debug(`${clientEventMap.reconnect_attempt}, ${attempt}`);
+    this.__socket.io.on(EVENT_MAP.io.reconnect_attempt, async attempt => {
+      this.zLog.debug(`${EVENT_MAP.io.reconnect_attempt}, ${attempt}`);
       const timeout = BackoffUtil.strategy(attempt, this.__backoffTimeout);
       await NodeUtil.sleep(timeout);
     });
     
-    this.__socket.io.on(clientEventMap.reconnect, () => {
+    this.__socket.io.on(EVENT_MAP.io.reconnect, () => {
       this.zLog.debug(`reconnect:${this.__socket.id}`);
       const connectOpts: BroadcastRoomConnect = { ...listenOpts, db: this.opts.db };
-      this.__socket.emit(broadcastEventMap.JOIN, connectOpts);
+      this.__socket.emit(EVENT_MAP.room.join, connectOpts);
     });
 
-    this.__socket.io.on('ping', () => {
-      this.__socket.emit('pong');
+    this.__socket.io.on(EVENT_MAP.io.ping, () => {
+      this.__socket.emit(EVENT_MAP.io.pong);
     });
 
-    this.__socket.io.on('error', err => {
+    this.__socket.io.on(EVENT_MAP.io.error, err => {
       this.zLog.error(`error on client socket: ${NodeUtil.extractErrorMessage(err)}`);
     });
   }
 
-  protected clientOn<T>(event: BroadcastEvent, listener: (msg: BroadcastRoomData<T>) => void) {
+  protected clientOn<T>(event: RoomEvent, listener: (msg: BroadcastRoomData<T>) => void) {
     this.__socket.emit(event, listener);
   }
 
-  protected clientEmit<T>(event: BroadcastEvent, msg: BroadcastRoomData<T>) {
+  protected clientEmit<T>(event: RoomEvent, msg: BroadcastRoomData<T>) {
     this.__socket.emit(event, msg);
   }
 
   private __initialize() { 
-    const path = `${serverConfigurations.broadcast.root}${pathSuffix}`;
-    this.__socket = io(this.__endpoint, { path, withCredentials: true });
-    this.zLog.info(`socket initialized on ${this.__endpoint} with path: ${path}`)
+    this.__socket = io(this.__endpoint, { 
+      path: `${serverConfigurations.broadcast.root}/socket.io/`,
+      withCredentials: true,
+      auth: { token: this.opts.token }
+    });
+
+    this.zLog.info(`socket initialized on ${this.__endpoint} with path: ${serverConfigurations.broadcast.root}/socket.io/`);
   }
 
   private __endpointResolver = (opts?: { protocol: Protocol, endpoint: string, port?: number }) => {

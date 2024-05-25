@@ -16,9 +16,9 @@ export interface IUser {
   password: string;
   displayName: string;
   phone: string;
-  role: UserRole;
 
   orgId?: string; // enable after account creation
+  role?: UserRole; // enable after account creation
 
   createdAt?: Date; // injected
   updatedAt?: Date; // injected
@@ -44,9 +44,9 @@ export const UserSchema: Schema<UserDocument> = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, unique: false },
   phone: { type: String, required: true, unique: true },
-  displayName: { type: String, required: true, unique: true },
-  role: { type: String, required: true, unique: false },
+  displayName: { type: String, required: true, unique: false },
   orgId: { type: String, required: false, unique: false },
+  role: { type: String, required: false, unique: false },
 }, { 
   timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }, 
   collection: UserCollectionName,

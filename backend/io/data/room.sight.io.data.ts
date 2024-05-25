@@ -28,7 +28,7 @@ export class RoomIOData {
       const analystPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
           roomId: room.roomId, 
-          event: 'DATA',
+          event: 'data',
           role: 'ANALYST',
           payload: { 
             message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha256', format: 'hex' }) as string,
@@ -40,7 +40,7 @@ export class RoomIOData {
       const architectPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
           roomId: room.roomId, 
-          event: 'DATA',
+          event: 'data',
           role: 'ARCHITECT',
           payload: { 
             message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha256', format: 'hex' }) as string,
@@ -52,7 +52,7 @@ export class RoomIOData {
       const adminPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
           roomId: room.roomId,
-          event: 'DATA',
+          event: 'data',
           role: 'ADMIN',
           payload: { 
             message: CryptoUtil.generateHash({ data: idx.toString(), algorithm: 'sha256', format: 'hex' }) as string,

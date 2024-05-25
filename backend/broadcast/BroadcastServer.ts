@@ -18,7 +18,7 @@ export class BroadcastServer extends Server<ApplicableSystem> {
     return true;
   }
 
-  async startEventListeners (): Promise<void>{
+  async initListeners () {
     try {
       if (envLoader.SIGHT_REDIS_DEPLOYMENT === 'cluster') BroadcastServerProcessor.startCluster(this.server);
       if (envLoader.SIGHT_REDIS_DEPLOYMENT !== 'cluster') BroadcastServerProcessor.startClient(this.server);
@@ -31,11 +31,11 @@ export class BroadcastServer extends Server<ApplicableSystem> {
 
 
 class BroadcastServerProcessor {  
-  static async startCluster(server: HttpServer, opts?: { nodes: ClusterNode[], cluster: ClusterOptions }) {
+  static startCluster(server: HttpServer, opts?: { nodes: ClusterNode[], cluster: ClusterOptions }) {
     new BroadcastProvider(server, { connOpts: opts });
   };
 
-  static async startClient(server: HttpServer, opts?: { redis: RedisOptions }) {
+  static startClient(server: HttpServer, opts?: { redis: RedisOptions }) {
     new BroadcastProvider(server, { connOpts: opts });
   };
 }

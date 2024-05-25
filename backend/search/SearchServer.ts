@@ -23,5 +23,5 @@ export class SearchServer extends Server<ApplicableSystem> {
     return true;
   }
 
-  startEventListeners = async (): Promise<void> =>  null;
+  initListeners = () =>  null;
 }

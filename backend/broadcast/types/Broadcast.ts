@@ -10,12 +10,26 @@ export interface BroadcastOpts {
     | { nodes: ClusterNode[], cluster: ClusterOptions };
 }
 
-export type BroadcastEvent = 'JOIN' | 'LEAVE' | 'DATA' | 'REFRESH' | 'ERROR';
-export type ClientEvents = 'connected' | 'reconnect_attempt' | 'reconnect' | 'disconnect' | 'refresh';
+export type RoomEvent = 
+  'join' 
+  | 'leave' 
+  | 'data';
 
-export type JoinBroadcastRoomRequest<T extends MemcacheDb> = {
+export type IOEvent = 
+  'connect' 
+  | 'connection'
+  | 'error' 
+  | 'reconnect_attempt' 
+  | 'reconnect' 
+  | 'disconnect' 
+  | 'refresh'
+  | 'upgrade'
+  | 'ping'
+  | 'pong';
+
+export type JoinBroadcastRoomRequest = {
   token: string;
-  room: T;
+  room: string;
   user: Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'>;
 }
 
@@ -26,32 +40,32 @@ export interface BroadcastRoomConnect {
   token: string;
   db: MemcacheDb;
   roomType: RoomAccess;
-}
+};
 
 export type BroadcastRoomData<T> = { 
-  roomId: string,
-  event: BroadcastEvent,
-  role: UserRole
-  payload: T 
+  roomId: string;
+  event: RoomEvent;
+  role: UserRole;
+  payload: T;
 };
 
 
-export const broadcastEventMap: { [evt in BroadcastEvent]: evt } = {
-  JOIN: 'JOIN',
-  LEAVE: 'LEAVE',
-  DATA: 'DATA',
-  REFRESH: 'REFRESH',
-  ERROR: 'ERROR',
+export const EVENT_MAP: { room: { [evt in RoomEvent]: evt }, io: { [evt in IOEvent]: evt } } = {
+  room: {
+    join: 'join',
+    leave: 'leave',
+    data: 'data'
+  },
+  io: {
+    connect: 'connect',
+    connection: 'connection',
+    error: 'error',
+    reconnect_attempt: 'reconnect_attempt',
+    reconnect: 'reconnect',
+    disconnect: 'disconnect',
+    refresh: 'refresh',
+    upgrade: 'upgrade',
+    ping: 'ping',
+    pong: 'pong'
+  }
 };
-
-export const clientEventMap: { [evt in ClientEvents]: evt } = {
-  connected: 'connected',
-  reconnect_attempt: 'reconnect_attempt',
-  reconnect: 'reconnect',
-  disconnect: 'disconnect',
-  refresh: 'refresh'
-};
-
-export const allowedHeader: string[] = [
-  'authorization',
-]

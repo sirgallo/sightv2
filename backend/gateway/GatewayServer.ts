@@ -63,5 +63,5 @@ export class GatewayServer extends Server<ApplicableSystem> {
     }
   }
 
-  startEventListeners = () => null;
+  initListeners = () => null;
 }

@@ -71,6 +71,7 @@ const envValueValidator = <T extends EnvironementKey>(envKey: T): EnvValue<T> =>
   const validateValue = (defaultVal: string) => {
     const value = env[envKey];
     if (! value || value.trim() === '') return defaultVal;
+    console.log(`existing value: ${value}`);
     return value;
   }
 

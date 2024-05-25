@@ -18,8 +18,7 @@ class PubIORunner extends SightIORunner<boolean> {
     const sightDb = await SightIOConnection.mongo();
     await this.prepareMockAuthData(sightDb);
 
-    const publisher = SightIOConnection.publisher();
-    await this.connectAndPublish(publisher, sightDb);
+    await this.connectAndPublish(sightDb);
 
     return true;
   }
@@ -36,12 +35,12 @@ class PubIORunner extends SightIORunner<boolean> {
     }
 
     for (const user of users) {
-      await sightDb.user.findOneAndDelete({ userId: user.userId });
+      await sightDb.user.findOneAndDelete({ email: user.email });
       await new AuthProvider(sightDb).register(user);
     }
   }
 
-  private async connectAndPublish(publisher: PublisherProvider, sightDb: SightMongoProvider) {
+  private async connectAndPublish(sightDb: SightMongoProvider) {
     try {
       const jwtMiddleware = new JWTMiddleware({ 
         secret: envLoader.JWT_SECRET,
@@ -53,6 +52,7 @@ class PubIORunner extends SightIORunner<boolean> {
       const mockConnectOpts = RoomIOData.connect();
       const user0 = await sightDb.user.findOne({ userId: users[0].userId });
       const token = await jwtMiddleware.sign(user0.userId);
+      const publisher = SightIOConnection.publisher(token);
       const validatedConnectOpts = mockConnectOpts
         .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, token }))
         .filter(room => room.roomType === 'org' || room.roomId === user0.userId);

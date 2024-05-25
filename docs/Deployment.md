@@ -50,3 +50,13 @@ to stop the services, run:
 ```bash
 ./stopDev.sh
 ```
+
+
+### docker .env
+
+In the root of the project, run:
+```bash
+echo "HOSTNAME=$(hostname)" > .env
+```
+
+This will create an env file which docker compose will automatically read on startup

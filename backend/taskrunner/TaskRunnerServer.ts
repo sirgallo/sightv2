@@ -15,7 +15,7 @@ export class TaskRunnerServer extends Server<ApplicableSystem> {
     return true;
   }
 
-  async startEventListeners(): Promise<void> {
+  initListeners() {
     try {
       const etcdProvider = Connection.etcd();
       const schedulerProvider = new ProcessorSchedulerProvider();

@@ -1,17 +1,18 @@
 import { MemcacheDb } from '../../core/data/types/Redis.js';
-import { BroadcastEvent } from './Broadcast.js';
+import { RoomEvent } from './Broadcast.js';
 
 
 export type Protocol = 'https' | 'wss';
 
 export interface ClientOpts {
   db: MemcacheDb;
+  token: string;
   conn?: { protocol: Protocol, endpoint: string, port?: number };
   keepAlive?: boolean;
 }
 
 export interface SubscriberOpts extends ClientOpts {
-  event: BroadcastEvent;
+  event: RoomEvent;
 }
 
 export type SocketEndpoint<T extends 'https' | 'wss', V extends number = undefined> =
@@ -20,6 +21,3 @@ export type SocketEndpoint<T extends 'https' | 'wss', V extends number = undefin
   : V extends undefined
   ? `${T}://${string}:${number}`
   : never;
-
-
-export const pathSuffix = '/socket.io/';

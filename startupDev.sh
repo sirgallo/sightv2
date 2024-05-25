@@ -5,8 +5,6 @@ read action
 
 if [ "$action" == "build" ]
 then
-  export HOSTNAME
-
   echo "build database?: (yes or no)"
   read database
 
@@ -51,7 +49,7 @@ then
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.io.yml up --build -d
+    docker compose -f docker-compose.io.yml up --build
   elif [ "$services" == "no" ]
   then
     echo "service layer not selected for build"
@@ -60,8 +58,6 @@ then
   fi
 elif [ "$action" == "restart" ]
 then  
-  export HOSTNAME
-
   echo "restart database?: (yes or no)"
   read database
 
@@ -93,7 +89,7 @@ then
 
   if [ "$services" == "yes" ]
   then
-    docker compose -f docker-compose.io.yml start -d
+    docker compose -f docker-compose.io.yml start
   elif [ "$services" == "no" ]
   then
     echo "service layer not selected for restart"

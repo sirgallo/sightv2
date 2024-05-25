@@ -2,13 +2,13 @@ import { EventEmitter } from 'events';
 
 import { LogProvider } from '../../core/log/LogProvider.js';
 import { ClientProvider } from './ClientProvider.js';
-import { BroadcastEvent, BroadcastRoomData } from '../types/Broadcast.js';
+import { RoomEvent, BroadcastRoomData } from '../types/Broadcast.js';
 import { SubscriberOpts } from '../types/Client.js';
 
 
 export class SubscriberProvider extends ClientProvider {
   private __subscriberEvents = new EventEmitter();
-  private __event: BroadcastEvent;
+  private __event: RoomEvent;
 
   constructor(opts: SubscriberOpts, zLog = new LogProvider(SubscriberProvider.name)) {
     super(opts, zLog);

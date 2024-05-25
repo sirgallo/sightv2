@@ -60,14 +60,13 @@ export abstract class Server<T extends string> {
   set routes(routes: Route<string, unknown>[]) { this.__routes = this.routes.concat(routes); }
 
   abstract initService(): Promise<boolean>;
-  abstract startEventListeners(): Promise<void>;
+  abstract initListeners(): void;
 
   async startServer() {
     try { 
       this.zLog.info(`welcome to ${this.name}, version ${this.version}`);
       await this.initService();
-      this.__initApp();
-      await this.startEventListeners();
+      this.__setupAndRun();
     } catch (err) {
       this.server.removeAllListeners();
       this.zLog.error(NodeUtil.extractErrorMessage(err));
@@ -75,7 +74,7 @@ export abstract class Server<T extends string> {
     }
   }
 
-  private __initApp() {
+  private __setupAndRun() {
     try {
       this.app = express();
       this.__initMiddleware();
@@ -86,6 +85,7 @@ export abstract class Server<T extends string> {
         this.zLog.info('...forking workers');
         this.__setUpWorkers();
       } else if (this.numOfCpus === 1 || (this.numOfCpus > 1 && cluster.isWorker)) {
+        this.initListeners();
         this.__listen();
       } else {
         throw new Error('number of cpus must be greater than 1.');

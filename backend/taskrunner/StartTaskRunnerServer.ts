@@ -4,5 +4,5 @@ import { TaskRunnerServer } from './TaskRunnerServer.js';
 
 try {
   const server = new TaskRunnerServer(serverConfigurations.search);
-  server.startEventListeners()
+  await server.startServer()
 } catch (err) { console.log(err); }

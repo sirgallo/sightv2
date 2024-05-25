@@ -7,7 +7,7 @@ import { Connection } from '../common/Connection.js';
 import { Profile } from '../common/Profile.js';
 import { PublisherProvider } from '../broadcast/providers/PublisherProvider.js';
 import { SubscriberProvider } from '../broadcast/providers/SubscriberProvider.js'
-import { BroadcastEvent } from '../broadcast/types/Broadcast.js';
+import { RoomEvent } from '../broadcast/types/Broadcast.js';
 
 
 export class SightIOConnection {
@@ -25,16 +25,16 @@ export class SightIOConnection {
     return Connection.queue('io_queue')
   }
 
-  static publisher() {
+  static publisher(token: string) {
     return new PublisherProvider(
-      { db: 'room_cache', keepAlive: true, conn: { protocol: 'https', endpoint: hostname() } }, 
+      { db: 'room_cache', token, keepAlive: true, conn: { protocol: 'https', endpoint: hostname() } }, 
       new LogProvider(`${SightIOConnection.name}:${this.publisher.name}`)
     );
   }
 
-  static subscriber(event: BroadcastEvent) {
+  static subscriber(token: string, event: RoomEvent) {
     return new SubscriberProvider(
-      { db: 'room_cache', event, keepAlive: true, conn: { protocol: 'https', endpoint: hostname() } }, 
+      { db: 'room_cache', token, event, keepAlive: true, conn: { protocol: 'https', endpoint: hostname() } }, 
       new LogProvider(`${SightIOConnection.name}:${this.subscriber.name}`)
     );
   }

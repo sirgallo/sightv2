@@ -18,9 +18,7 @@ class SubIORunner extends SightIORunner<boolean> {
     const sightDb = await SightIOConnection.mongo();
     await this.prepareMockAuthData(sightDb);
 
-    const subscriber = SightIOConnection.subscriber('DATA');
-    await this.connectAndSubscribe(subscriber, sightDb);
-
+    await this.connectAndSubscribe(sightDb);
     return true;
   }
 
@@ -36,12 +34,12 @@ class SubIORunner extends SightIORunner<boolean> {
     }
 
     for (const user of users) {
-      await sightDb.user.findOneAndDelete({ userId: user.userId });
+      await sightDb.user.findOneAndDelete({ email: user.email });
       await new AuthProvider(sightDb).register(user);
     }
   }
 
-  private async connectAndSubscribe(subscriber: SubscriberProvider, sightDb: SightMongoProvider) {
+  private async connectAndSubscribe(sightDb: SightMongoProvider) {
     try {
       const jwtMiddleware = new JWTMiddleware({ 
         secret: envLoader.JWT_SECRET,
@@ -50,23 +48,24 @@ class SubIORunner extends SightIORunner<boolean> {
 
       const { users } = AuthIOData.data();
       const mockConnectOpts = RoomIOData.connect();
-      const user0 = await sightDb.user.findOne({ userId: users[0].userId });
+      console.log('users', users)
+      const user0 = await sightDb.user.findOne({ email: users[0].email });
       const token = await jwtMiddleware.sign(user0.userId);
+      const subscriber = SightIOConnection.subscriber(token, 'data');
       const validatedConnectOpts = mockConnectOpts
         .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, token }))
         .filter(room => room.roomType === 'org' || room.roomId === user0.userId);
 
-      new Promise(() => {
-        try {
-          for (const opt of validatedConnectOpts) { 
-            subscriber.listen(opt); 
-            this.zLog.debug(`listening on subscriber for opt: ${JSON.stringify(opt, null, 2)}`);
-          };
-        } catch (err) {
-          this.zLog.error(`listening on subscriber error: ${NodeUtil.extractErrorMessage(err)}`);
-          throw err;
-        }
-      });
+  
+      try {
+        for (const opt of validatedConnectOpts) { 
+          subscriber.listen(opt); 
+          // this.zLog.debug(`listening on subscriber for opt: ${JSON.stringify(opt, null, 2)}`);
+        };
+      } catch (err) {
+        this.zLog.error(`listening on subscriber error: ${NodeUtil.extractErrorMessage(err)}`);
+        throw err;
+      }
 
       this.__subscribe(subscriber);
     } catch (err) {

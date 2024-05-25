@@ -18,16 +18,8 @@ x-variables:
         reservations:
           memory: 250M
     environment:
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_TIMEOUT=${JWT_TIMEOUT}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - JWT_REFRESH_TIMEOUT=${JWT_REFRESH_TIMEOUT}
-      - PASSWORD_SALT_ROUNDS=${PASSWORD_SALT_ROUNDS}
-      - SIGHT_DB_HOSTS=${SIGHT_DB_HOSTS}
-      - SIGHT_DB_USER=${SIGHT_DB_USER}
-      - SIGHT_DB_PASS=${SIGHT_DB_PASS}
-      - SIGHT_ETCD_HOSTS=${SIGHT_ETCD_HOSTS}
-      - NODE_ENV=docker
+      SIGHT_PLATFORM_ENDPOINT: ${HOSTNAME}
+      NODE_ENV: docker
     networks:
       api_layer:
       data_layer:

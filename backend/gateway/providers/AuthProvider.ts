@@ -48,7 +48,9 @@ export class AuthProvider implements AuthEndpoints {
       const payload: IUser = { 
         userId: CryptoUtil.generateSecureUUID(),
         password: hash,
-        ...opts,
+        email: opts.email,
+        displayName: opts.displayName,
+        phone: opts.phone
       };
 
       const newUser = first(await this.__sightDb.user.insertMany([ payload ]));
