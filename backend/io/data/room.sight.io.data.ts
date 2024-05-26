@@ -2,21 +2,24 @@ import lodash from 'lodash';
 const { transform } = lodash;
 
 import { CryptoUtil } from '../../core/utils/Crypto.js';
-import { BroadcastRoomConnect, BroadcastRoomData, RoomAccess } from '../../broadcast/types/Broadcast.js';
+import { BroadcastRoomMessage, RoomType } from '../../broadcast/types/Broadcast.js';
 import { AuthIOData } from './auth.sight.io.data.js';
 
 
 
 export class RoomIOData {
-  static connect(rooms: { roomId: string, roomType: RoomAccess }[]): BroadcastRoomConnect[] {
+  static connect(
+    rooms: { roomId: string, roomType: RoomType }[]
+  ): Pick<BroadcastRoomMessage, 'roomId' | 'orgId' | 'role' | 'roomType'>[] {
     return rooms.map(room => ({ roomId: room.roomId, db: 'room_cache', roomType: room.roomType, token: null }));
   }
 
-  static data(rooms: { roomId: string, roomType: RoomAccess }[]): { [roomId: string]: BroadcastRoomData<MockRoomDataPayload>[] } {
+  static data(rooms: { roomId: string, roomType: RoomType }[]): { [roomId: string]: BroadcastRoomMessage<MockRoomDataPayload>[] } {
     return transform(rooms, (acc, room) => {
-      const analystPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
+      const analystPayloads: BroadcastRoomMessage<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
           roomId: room.roomId, 
+          roomType: room.roomType,
           event: 'data',
           role: 'ANALYST',
           payload: { 
@@ -26,9 +29,10 @@ export class RoomIOData {
         };
       });
 
-      const architectPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
+      const architectPayloads: BroadcastRoomMessage<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
-          roomId: room.roomId, 
+          roomId: room.roomId,
+          roomType: room.roomType,
           event: 'data',
           role: 'ARCHITECT',
           payload: { 
@@ -38,9 +42,10 @@ export class RoomIOData {
         };
       });
 
-      const adminPayloads: BroadcastRoomData<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
+      const adminPayloads: BroadcastRoomMessage<MockRoomDataPayload>[] = Array(ROOM_PAYLOAD_DATA_LENGTH).fill(0).map((_, idx) => {
         return { 
           roomId: room.roomId,
+          roomType: room.roomType,
           event: 'data',
           role: 'ADMIN',
           payload: { 
@@ -52,7 +57,7 @@ export class RoomIOData {
 
       acc[room.roomId] = [ ...analystPayloads, ...architectPayloads, ...adminPayloads ];
       return acc;
-    }, {} as { [roomId: string]: BroadcastRoomData<MockRoomDataPayload>[] });
+    }, {} as { [roomId: string]: BroadcastRoomMessage<MockRoomDataPayload>[] });
   }
 }
 

@@ -2,13 +2,12 @@ import { JWTMiddleware } from '../../core/middleware/JWTMiddleware.js';
 import { NodeUtil } from '../../core/utils/Node.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
-import { SubscriberProvider } from '../../broadcast/providers/SubscriberProvider.js';
-import { BroadcastRoomData, RoomAccess } from '../../broadcast/types/Broadcast.js';
+import { RoomAccess } from '../../broadcast/types/Broadcast.js';
 import { AuthProvider } from '../../gateway/providers/AuthProvider.js'
 import { SightIOConnection } from '../../io/sight.io.connect.js';
-import { SightIORunner, sightIORunner } from '../../io/sight.io.runner.js';
+import { SightIORunner } from '../../io/sight.io.runner.js';
 import { AuthIOData } from '../../io/data/auth.sight.io.data.js';
-import { MockRoomDataPayload, RoomIOData } from '../../io/data/room.sight.io.data.js';
+import { RoomIOData } from '../../io/data/room.sight.io.data.js';
 
 
 class SubIORunner extends SightIORunner<boolean> {
@@ -63,26 +62,25 @@ class SubIORunner extends SightIORunner<boolean> {
       const token = await jwtMiddleware.sign(mockUsers[0].userId);
       const subscriber = SightIOConnection.subscriber(token, 'data');
 
-      subscriber.on('joined', () => {
-        this.zLog.debug('successfully joined room');
-      });
+      subscriber.on('connect', () => {
+        this.zLog.debug('successfully ');
 
-      subscriber.on('data', msg => {
-        this.zLog.debug(`msg received: ${msg}`);
-      });
+        subscriber.on('message', msg => {
+          this.zLog.debug(`msg received: ${msg}`);
+        });
 
-      const validatedConnectOpts = mockConnectOpts
-        .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, token }))
-        .filter(room => room.roomType === 'org' || room.roomId === mockUsers[0].userId);
+        const validatedConnectOpts = mockConnectOpts
+          .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, role: mockUsers[0].role }))
+          .filter(room => room.roomType === 'org' || room.roomId === mockUsers[0].userId);
 
-      try {
         for (const opt of validatedConnectOpts) { 
           subscriber.join(opt);
         };
-      } catch (err) {
-        this.zLog.error(`listening on subscriber error: ${NodeUtil.extractErrorMessage(err)}`);
-        throw err;
-      }
+      });
+
+      subscriber.on('error', err => {
+        this.zLog.error(`subscriber err: ${err}`);
+      });
     } catch (err) {
       this.zLog.error(`connect io subscriber error: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;

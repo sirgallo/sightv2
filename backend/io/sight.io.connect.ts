@@ -6,8 +6,7 @@ import { DEFAULT_CLUSTER_OPTIONS } from '../core/data/types/Redis.js';
 import { Connection } from '../common/Connection.js';
 import { Profile } from '../common/Profile.js';
 import { PublisherProvider } from '../broadcast/providers/PublisherProvider.js';
-import { SubscriberProvider } from '../broadcast/providers/SubscriberProvider.js'
-import { RoomEvent } from '../broadcast/types/Broadcast.js';
+import { ClientProvider } from 'broadcast/providers/ClientProvider.js';
 
 
 export class SightIOConnection {
@@ -27,14 +26,14 @@ export class SightIOConnection {
 
   static publisher(token: string) {
     return new PublisherProvider(
-      { db: 'room_cache', token, keepAlive: true }, 
+      { token, keepAlive: true }, 
       new LogProvider(`${SightIOConnection.name}:${this.publisher.name}`)
     );
   }
 
-  static subscriber(token: string, event: RoomEvent) {
-    return new SubscriberProvider(
-      { db: 'room_cache', token, event, keepAlive: true }, 
+  static subscriber(token: string) {
+    return new ClientProvider(
+      { token, keepAlive: true }, 
       new LogProvider(`${SightIOConnection.name}:${this.subscriber.name}`)
     );
   }
