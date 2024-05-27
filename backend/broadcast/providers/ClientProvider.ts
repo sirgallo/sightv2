@@ -1,4 +1,4 @@
-import { io, Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client/debug';
 import { EventEmitter } from 'events';
 
 import { LogProvider } from '../../core/log/LogProvider.js';
@@ -30,12 +30,22 @@ export class ClientProvider extends EventEmitter {
     return super.on(event, listener);
   }
 
-  join<T>(listenOpts: Pick<BroadcastRoomMessage<T>, 'roomId' | 'roomType' | 'role' | 'orgId'>) {
-    const connectOpts: BroadcastRoomMessage<any> = { ...listenOpts, payload: null };
+  join(listenOpts: Pick<BroadcastRoomMessage, 'roomId' | 'roomType' | 'role' | 'orgId'>) {
+    const connectOpts: BroadcastRoomMessage = { ...listenOpts, payload: null };
     this.zLog.info(`attempt room join with: ${JSON.stringify(connectOpts, null, 2)}`);
     
     this.__socket.emit('join_room', connectOpts);
     this.__roomMap.set(connectOpts.roomId, connectOpts);
+  }
+
+  leave(opts: Pick<BroadcastRoomMessage, 'roomId'>) {
+    this.__socket.emit('leave_room', opts);
+  }
+
+  pub<T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) {
+    this.__socket.emit('pub_room', msg, ackMsg => {
+      this.zLog.debug(`published message acknowledged: ${ackMsg}`);
+    });
   }
 
   sub(listener: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>, ack: AcknowledgeFn) => void) {
@@ -43,15 +53,21 @@ export class ClientProvider extends EventEmitter {
     return super.on(event, listener);
   }
 
+  close() {
+    this.__socket.disconnect();
+  }
+
   private __initialize() { 
     this.zLog.debug(`client --> broadcast endpoint: ${this.__endpoint}`);
 
-    this.__socket = io(this.__endpoint, {
+    this.__socket = io('https://battle-station-0', {
       path: '/socket.io/',
       transports: [ 'polling', 'websocket' ],
+      upgrade: true,
       secure: true,
       rejectUnauthorized: false,
-      query: { token: this.opts.token },
+      reconnectionDelay: 5000,
+      query: { token: this.opts.token }
     });
 
     this.__socket.io.engine.on('open', () =>{
@@ -93,8 +109,6 @@ export class ClientProvider extends EventEmitter {
 
     this.__socket.io.on('reconnect_attempt', async attempt => {
       this.zLog.debug(`reconnect_attempt:${attempt}`);
-      const timeout = BackoffUtil.strategy(attempt, this.__backoffTimeout);
-      await NodeUtil.sleep(timeout);
     });
     
     this.__socket.io.on('reconnect', () => {
@@ -118,4 +132,3 @@ export class ClientProvider extends EventEmitter {
     ].filter(el => el).join('') as SocketEndpoint<Protocol>;
   }
 }
-

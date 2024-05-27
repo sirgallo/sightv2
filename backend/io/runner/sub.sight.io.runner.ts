@@ -2,12 +2,13 @@ import { JWTMiddleware } from '../../core/middleware/JWTMiddleware.js';
 import { NodeUtil } from '../../core/utils/Node.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
-import { RoomAccess } from '../../broadcast/types/Broadcast.js';
+import { RoomType } from '../../broadcast/types/Broadcast.js';
 import { AuthProvider } from '../../gateway/providers/AuthProvider.js'
 import { SightIOConnection } from '../../io/sight.io.connect.js';
 import { SightIORunner } from '../../io/sight.io.runner.js';
 import { AuthIOData } from '../../io/data/auth.sight.io.data.js';
 import { RoomIOData } from '../../io/data/room.sight.io.data.js';
+import { UserRole } from 'db/models/ACL.js';
 
 
 class SubIORunner extends SightIORunner<boolean> {
@@ -49,32 +50,26 @@ class SubIORunner extends SightIORunner<boolean> {
       const mockUsers = await sightDb.user.find({ email: { $in: users.map(u => u.email) }});
       if (! mockUsers) throw new Error('no mock users available');
 
-      const rooms: { roomId: string, roomType: RoomAccess }[] = [
-        { roomId: orgs[0].orgId, roomType: 'org' },
-        { roomId: orgs[1].orgId, roomType: 'org' },
-        { roomId: mockUsers[0].userId, roomType: 'user' },
-        { roomId: mockUsers[1].userId, roomType: 'user' },
-        { roomId: mockUsers[2].userId, roomType: 'user' },
+      const rooms: { roomId: string, orgId: string, role: UserRole, roomType: RoomType }[] = [
+        { roomId: '5d214fc5-f36c-4fbf-bd96-c9d12878b1c6', orgId: mockUsers[0].orgId, role: mockUsers[0].role, roomType: 'org' },
+        { roomId: '8759c7b6-449b-42be-95d6-477b89a2c452', orgId: mockUsers[1].orgId, role: mockUsers[1].role, roomType: 'org' },
+        { roomId: 'f117fd99-d8bd-4c00-babd-f64ed8a35009', orgId: mockUsers[2].orgId, role: mockUsers[1].role, roomType: 'org' },
+        { roomId: '8885a0d2-47e0-4601-8169-35cb143cf9f7', orgId: mockUsers[0].orgId, role: mockUsers[0].role, roomType: 'user' }
       ];
 
-      const mockConnectOpts = RoomIOData.connect(rooms);
-      console.log('users', mockUsers)
       const token = await jwtMiddleware.sign(mockUsers[0].userId);
-      const subscriber = SightIOConnection.subscriber(token, 'data');
+      const subscriber = SightIOConnection.broadcast(token);
 
-      subscriber.on('connect', () => {
-        this.zLog.debug('successfully ');
+      subscriber.ready(() => {
+        this.zLog.debug('ready');
 
-        subscriber.on('message', msg => {
+        subscriber.sub((msg, ack) => {
           this.zLog.debug(`msg received: ${msg}`);
+          ack('ok');
         });
 
-        const validatedConnectOpts = mockConnectOpts
-          .map(opt => ({ roomId: opt.roomId, roomType: opt.roomType, role: mockUsers[0].role }))
-          .filter(room => room.roomType === 'org' || room.roomId === mockUsers[0].userId);
-
-        for (const opt of validatedConnectOpts) { 
-          subscriber.join(opt);
+        for (const room of rooms) { 
+          subscriber.join(room);
         };
       });
 

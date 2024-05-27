@@ -7,7 +7,7 @@ import { routeMappings } from '../configs/RouteMappings.js';
 
 /*
   PollRoute:
-    1.) health check endpoint.
+    1.) health check endpoint
     2.) return response if alive
 */
 export class PollRoute<T extends 'poll', V extends boolean> extends Route<T, V> {
@@ -18,7 +18,6 @@ export class PollRoute<T extends 'poll', V extends boolean> extends Route<T, V> 
   }
 
   private poll(__req: Request, res: Response, __next: NextFunction) {
-    this.__zLog.info('health check reached');
     res.status(200).send({ alive: 'okay' });
   }
 

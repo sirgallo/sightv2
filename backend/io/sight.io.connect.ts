@@ -5,8 +5,7 @@ import { RedisProvider } from '../core/data/providers/RedisProvider.js';
 import { DEFAULT_CLUSTER_OPTIONS } from '../core/data/types/Redis.js';
 import { Connection } from '../common/Connection.js';
 import { Profile } from '../common/Profile.js';
-import { PublisherProvider } from '../broadcast/providers/PublisherProvider.js';
-import { ClientProvider } from 'broadcast/providers/ClientProvider.js';
+import { ClientProvider } from '../broadcast/providers/ClientProvider.js';
 
 
 export class SightIOConnection {
@@ -24,17 +23,10 @@ export class SightIOConnection {
     return Connection.queue('io_queue')
   }
 
-  static publisher(token: string) {
-    return new PublisherProvider(
-      { token, keepAlive: true }, 
-      new LogProvider(`${SightIOConnection.name}:${this.publisher.name}`)
-    );
-  }
-
-  static subscriber(token: string) {
+  static broadcast(token: string) {
     return new ClientProvider(
       { token, keepAlive: true }, 
-      new LogProvider(`${SightIOConnection.name}:${this.subscriber.name}`)
+      new LogProvider(`${SightIOConnection.name}:${this.broadcast.name}`)
     );
   }
 
