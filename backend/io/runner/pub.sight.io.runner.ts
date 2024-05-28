@@ -63,27 +63,29 @@ class PubIORunner extends SightIORunner<boolean> {
       const token = await jwtMiddleware.sign(pubber.userId);
       const publisher = SightIOConnection.broadcast(token);
       
-      publisher.msg(msg => {
+      publisher.on('room:msg', msg => {
         this.zLog.debug(`msg received: ${msg}`);
       });
 
-      publisher.ready(() => {
-        this.zLog.debug('ready');
-
-        const mockData = RoomIOData.data(rooms);
-        for (const room of rooms) { 
-          publisher.join(room, roomId => {
-            for (const msg of mockData[roomId]) {
-              publisher.pub(msg);
-              this.zLog.debug(`published mock data: ${msg}`)
-            }
-          });
-        };
-      });
-
-      publisher.err(err => {
+      publisher.on('broadcast:err', err => {
         this.zLog.error(`subscriber err: ${err}`);
       });
+
+      publisher.on('broadcast:welcome', async () => {
+        this.zLog.info('publisher ready');
+        const mockData = RoomIOData.data(rooms);
+
+        const pubPromises = rooms.map(async room => { 
+          const roomId = await publisher.join(room);
+          for (const msg of mockData[roomId]) {
+            await publisher.pub(msg);
+            this.zLog.debug(`published mock data: ${msg}`)
+          }
+        });
+
+        await Promise.all(pubPromises);
+      });
+
     } catch (err) {
       this.zLog.error(`connect io publisher error: ${NodeUtil.extractErrorMessage(err)}`);
       throw err;
@@ -91,7 +93,4 @@ class PubIORunner extends SightIORunner<boolean> {
   }
 }
 
-
-sightIORunner({ 
-  ioRunner: new PubIORunner()
-});
+new PubIORunner().runIO();

@@ -61,20 +61,22 @@ class SubIORunner extends SightIORunner<boolean> {
       const token = await jwtMiddleware.sign(subber.userId);
       const subscriber = SightIOConnection.broadcast(token);
       
-      subscriber.msg(msg => {
+      subscriber.on('room:msg', msg => {
         this.zLog.debug(`msg: ${JSON.stringify(msg, null, 2)}`);
       });
 
-      subscriber.ready(() => {
-        for (const room of rooms) { 
-          subscriber.join(room, roomId => { 
-            this.zLog.debug(`joined room: ${roomId}`);
-          });
-        }
+      subscriber.on('room:joined', roomId => { 
+        this.zLog.debug(`joined room: ${roomId}`);
       });
 
-      subscriber.err(err => {
+      subscriber.on('broadcast:err', err => {
         this.zLog.error(`subscriber err: ${err}`);
+      });
+
+      subscriber.on('broadcast:welcome', () => {
+        for (const room of rooms) { 
+          subscriber.join(room);
+        }
       });
     } catch (err) {
       this.zLog.error(`connect io subscriber error: ${NodeUtil.extractErrorMessage(err)}`);

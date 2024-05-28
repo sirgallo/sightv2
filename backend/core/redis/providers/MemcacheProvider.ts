@@ -55,6 +55,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
     const handler = async (opts: { key: string, value: T, expirationInSec?: number }): Promise<boolean> => {
       const prefixedKey = this.__prefixedKey(opts.key);
       await this.client.hset(prefixedKey, opts.value);
+      console.log('set?')
       if (opts.expirationInSec) await this.client.expire(prefixedKey, opts.expirationInSec);
       return true;
     };
@@ -75,6 +76,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
     const handler = async (key: string): Promise<T> => {
       const prefixedKey = this.__prefixedKey(key);
       const value = await this.client.hgetall(prefixedKey);
+      console.log('val:', value);
       return value as T;
     };
 
@@ -115,8 +117,7 @@ export class MemcacheProvider<PRF extends string = undefined>{
     ...args: Parameters<T>
   ) {
     try {
-      const boundFn = fn.bind(this);
-      return boundFn(...args);
+      return fn(...args);
     } catch(err) {
       this.__zLog.error(`exec redis cmd err: ${NodeUtil.extractErrorMessage(err)}`);
       await this.__removeClient().catch(e => { 

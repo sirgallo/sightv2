@@ -23,19 +23,20 @@ export type BroadcastRoomMessage<T = unknown> = {
 
 export type AcknowledgeFn = (ackMsg: string) => Promise<void>;
 export interface ServerClientEvents {
-  welcome: () => void;
-  joined: (roomId: string) => void;
-  left: (roomId: string) => void;
-  published: () => void;
-  msg: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) => void;
-  refresh: (token: string) => void;
-  err: (err: string) => void;
+  'broadcast:welcome': () => void;
+  'broadcast:refresh': (token: string) => void;
+  'broadcast:err': (err: string) => void;
+
+  'room:joined': (roomId: string) => void;
+  'room:left': (roomId: string) => void;
+  'room:published': () => void;
+  'room:msg': <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) => void;
 }
 
 export interface ClientServerEvents {
-  join: (msg: Pick<BroadcastRoomMessage, 'roomId' | 'orgId' | 'role' | 'roomType'>) => void;
-  leave: (msg: Pick<BroadcastRoomMessage, 'roomId'>) => void;
-  publish: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) => void;
+  'room:join': (msg: Pick<BroadcastRoomMessage, 'roomId' | 'orgId' | 'role' | 'roomType'>, ack: AcknowledgeFn) => void;
+  'room:leave': (msg: Pick<BroadcastRoomMessage, 'roomId'>, ack: AcknowledgeFn) => void;
+  'room:publish': <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>, ack: AcknowledgeFn) => void;
 }
 
 export interface ServerServerEvents {

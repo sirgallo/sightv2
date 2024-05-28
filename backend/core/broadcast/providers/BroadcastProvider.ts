@@ -1,24 +1,25 @@
 import { Server as HttpServer } from 'http';
+import { Cluster } from 'ioredis';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-streams-adapter';
 
 import { LogProvider } from '../../log/LogProvider.js';
+import { RedisProvider } from '../../data/providers/RedisProvider.js';
 import { JWTMiddleware, JWTVerifyPayload } from '../../middleware/JWTMiddleware.js';
 import { ACLMiddleware } from '../../middleware/ACLMiddleware.js';
 import { NodeUtil } from '../../utils/Node.js';
-import { MemcacheProvider } from '../../redis/providers/MemcacheProvider.js';
 import { envLoader } from '../../../common/EnvLoader.js';
-import { IUser } from '../../../db/models/User.js';
 import { 
   BroadcastOpts, BroadcastRoomMessage, BroadcastSocket, RoomMetadata,
   ClientServerEvents, ServerClientEvents, ServerServerEvents 
 } from '../types/Broadcast.js';
+import { BroadcastMetadataProvider } from './BroadcastMetadataProvider.js';
 
 
 export class BroadcastProvider {
   private __io: Server<ClientServerEvents, ServerClientEvents, ServerServerEvents>;
-  private __memcache: MemcacheProvider;
-  private __socketMap: { [uId: string]: BroadcastSocket } = {};
+  private __client: Cluster;
+  private __metadata: BroadcastMetadataProvider;
   private __jwtMiddleware = new JWTMiddleware({ 
     secret: envLoader.JWT_SECRET,
     timespanInSec: envLoader.JWT_TIMEOUT 
@@ -26,7 +27,8 @@ export class BroadcastProvider {
 
   private __zLog = new LogProvider(BroadcastProvider.name);
   constructor(private __server: HttpServer, private __opts: BroadcastOpts) {
-    this.__memcache = new MemcacheProvider({ db: 'room_cache', ...this.__opts }); // connect to redis memcache for underlying client
+    this.__client = new RedisProvider().getCluster({ service: 'stream', db: 'broadcast_stream' });
+    this.__metadata = new BroadcastMetadataProvider(this.__opts);
     this.__initialize();
   }
 
@@ -45,14 +47,14 @@ export class BroadcastProvider {
       }
     });
 
-    this.__io.adapter(createAdapter(this.__memcache.client.duplicate())); // create redis pub/sub adapter
+    this.__io.adapter(createAdapter(this.__client)); // create redis pub/sub adapter
     this.__io.use(async (socket: BroadcastSocket, next) => { // validate incoming request
       const token = socket.handshake.query.token as string; // set query args on handshake
       
       const { verified, payload } = await this.__checkAuth(token); // check incoming auth token
       if (! verified) return next(new Error('socket.io authentication error'));
       if (payload?.newToken) { 
-        this.__io.to(socket.id).emit('refresh', payload.newToken);
+        this.__io.to(socket.id).emit('broadcast:refresh', payload.newToken);
       }
 
       socket.user = payload.user;
@@ -63,21 +65,79 @@ export class BroadcastProvider {
     });
 
     this.__io.on('connection', async (socket: BroadcastSocket) => {
+      this.__zLog.info(`socket connection made with id ${socket.id}`);
+      await socket.join(socket.user.userId);
+
       try {
-        this.__zLog.info(`socket connection made with id ${socket.id}`);
+        socket.on('room:join', async (msg, callback) => { // handle validated socket connections
+          console.log('am I here?')
+          try { // map the incoming socket id to the room - socket map and join the db
+            const { roomId, orgId, roomType } = msg;
+    
+            // if (roomType === 'org' && orgId !== socket.user.orgId) throw new Error('incoming user is not in room organization');
+            if (! ACLMiddleware.isEligible({ incoming: socket.user.role, expected: msg.role })) throw new Error('elevated privileges required to join room');
+            
+            await this.__metadata.setRoomMeta({ roomId, orgId, roomRole: msg.role, roomType, userIds: [ socket.user.userId ] }); // if room doesn't exist, make it
+            //this.__zLog.info(`${socket.user.userId} joined room --> ${msg.roomId}`);
 
-        await this.__setUserMeta(socket);
-        
-        socket.join(socket.user.userId);
+            this.__zLog.info(`${socket.user.userId} joined room --> ${roomId}`);
+            this.__zLog.debug(`socket rooms: ${JSON.stringify(socket.rooms, null, 2)}`);
+            callback(roomId);
+          } catch (err) {
+            this.__zLog.error(`join room err for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
+            socket.emit('broadcast:err', NodeUtil.extractErrorMessage(err));
+          }
+        });
+    
+        socket.on('room:publish', async (msg, callback) => {
+          console.log('publishing', msg);
+          try { // map the incoming socket id to the room - socket map and join the db
+            // const roomMeta = await this.__metadata.getRoomMeta(msg.roomId);
+            // if (! roomMeta) throw new Error('room does not exist, cannot broadcast to non-existent room');
+  
+            // const isValidated = this.__validatePublisher(roomMeta, socket.user);
+            // if (! isValidated) throw new Error('publisher not validated on room for broadcasting');
+            
+            // const updatedUserIds = await this.__broadcast({ userIds: roomMeta.userIds, msg });
+            // await this.__metadata.setRoomMeta({ roomId: msg.roomId, ...roomMeta, userIds: updatedUserIds });
+            callback(msg.roomId);
+          } catch (err) {
+            this.__zLog.error(`error for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
+            socket.emit('broadcast:err', NodeUtil.extractErrorMessage(err));
+            throw err;
+          }
+        });
+    
+        socket.on('room:leave', async (msg, callback) => { // socket leave room
+          try {
+            await this.__leaveRoom({ userId: socket.user.userId, roomId: msg.roomId });
+            socket.leave(msg.roomId);
+            callback(msg.roomId);
+          } catch (err) {
+            this.__zLog.error(`error for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
+            throw err;
+          }
+        });
+    
+        socket.on('error', err => {
+          this.__zLog.error(`socket with id ${socket.id} err: ${NodeUtil.extractErrorMessage(err)}`);
+          socket.disconnect();
+        });
 
-        await this.__handleConnection(socket);
-        this.__socketMap[socket.user.userId] = socket;
+        socket.on('disconnecting', reason => {
+          this.__zLog.debug(`socket disconect for ${socket.id}: ${reason}`);
+          
+        });
+
+        socket.emit('broadcast:welcome');
+        // this.__socketMap.set(socket.user.userId, await this.__handleConnection(socket));
+        this.__zLog.info(`socket listeners started`);
       } catch(err) {
         this.__zLog.error(`connection error: ${NodeUtil.extractErrorMessage(err)}`);
         socket.disconnect();
         throw err;
       }
-    });
+      });
   }
 
   private async __checkAuth(token: string): Promise<{ verified: boolean, payload: JWTVerifyPayload }> { // verify incoming auth token
@@ -90,9 +150,13 @@ export class BroadcastProvider {
     }
   }
 
-  private __handleConnection(socket: BroadcastSocket) { // init incoming socket connections
+  /*
+  private async __handleConnection(socket: BroadcastSocket) { // init incoming socket connections
     try {
-      socket.on('join', async msg => { // handle validated socket connections
+      await this.__metadata.setUserMeta({ userMeta: socket.user, expiration: socket.exp });
+      await socket.join(socket.user.userId);
+
+      socket.on('room:join', async msg => { // handle validated socket connections
         console.log('here?')
         try { // map the incoming socket id to the room - socket map and join the db
           const { roomId, orgId, roomType } = msg;
@@ -100,41 +164,42 @@ export class BroadcastProvider {
           if (roomType === 'org' && roomId !== socket.user.orgId) throw new Error('incoming user is not in room organization');
           if (! ACLMiddleware.isEligible({ incoming: socket.user.role, expected: msg.role })) throw new Error('elevated privileges required to join room');
           
-          await this.__setRoomMeta({ roomId, orgId, roomRole: msg.role, roomType, userIds: [ socket.user.userId ] }); // if room doesn't exist, make it
-          socket.emit('joined', msg.roomId);
-
+          await this.__metadata.setRoomMeta({ roomId, orgId, roomRole: msg.role, roomType, userIds: [ socket.user.userId ] }); // if room doesn't exist, make it
           this.__zLog.info(`${socket.user.userId} joined room --> ${msg.roomId}`);
+
+          socket.emit('room:joined', msg.roomId);
         } catch (err) {
           this.__zLog.error(`join room err for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
-          this.__io.to(socket.user.userId).emit('err', NodeUtil.extractErrorMessage(err));
+          socket.emit('broadcast:err', NodeUtil.extractErrorMessage(err));
           throw err;
         }
       });
   
       socket.on( // broadcast data published by the socket to other sockets in the designated room
-        'publish',
+        'room:publish',
         async <T>({ roomId, payload }: Pick<BroadcastRoomMessage<T extends infer R ? R : never>, 'roomId' | 'payload'>) => {
           try { // map the incoming socket id to the room - socket map and join the db
-            const roomMeta = await this.__getRoomMeta(roomId);
+            const roomMeta = await this.__metadata.getRoomMeta(roomId);
             if (! roomMeta) throw new Error('room does not exist, cannot broadcast to non-existent room');
   
             const isValidated = this.__validatePublisher(roomMeta, socket);
             if (! isValidated) throw new Error('publisher not validated on room for broadcasting');
             
             const updatedUserIds = await this.__broadcast({ userIds: roomMeta.userIds, msg: { roomId, payload } });
-            await this.__setRoomMeta({ roomId, ...roomMeta, userIds: updatedUserIds })
+            await this.__metadata.setRoomMeta({ roomId, ...roomMeta, userIds: updatedUserIds });
+            socket.emit('room:published');
           } catch (err) {
             this.__zLog.error(`error for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
-            this.__io.to(socket.user.userId).emit('err', NodeUtil.extractErrorMessage(err));
+            socket.emit('broadcast:err', NodeUtil.extractErrorMessage(err));
             throw err;
           }
         }
       );
   
-      socket.on('leave', async ({ roomId }: Pick<BroadcastRoomMessage, 'roomId'>) => { // socket leave room
+      socket.on('room:leave', async ({ roomId }: Pick<BroadcastRoomMessage, 'roomId'>) => { // socket leave room
         try {
           await this.__leaveRoom({ userId: socket.user.userId, roomId });
-          socket.emit('left', roomId);
+          socket.emit('room:left', roomId);
         } catch (err) {
           this.__zLog.error(`error for socket ${socket.id}: ${NodeUtil.extractErrorMessage(err)}`);
           throw err;
@@ -148,12 +213,15 @@ export class BroadcastProvider {
 
       socket.on('disconnect', reason => {
         this.__zLog.debug(`socket disconect for ${socket.id}: ${reason}`);
-        socket = null;
       });
+
+      socket.emit('broadcast:welcome');
+      return socket;
     } catch (err) {
       throw err;
     }
   }
+  */
 
   private async __broadcast<T>({ userIds, msg }: { 
     userIds: string[],
@@ -162,15 +230,15 @@ export class BroadcastProvider {
     try {
       const handleUserErr = async (userId: string) => {
         await this.__leaveRoom({ userId, roomId: msg.roomId })
-        this.__io.to(userId).emit('err', 'user metadata not registered, reauthenticate');
+        this.__io.to(userId).emit('broadcast:err', 'user metadata not registered, reauthenticate');
         return null
       }
       const broadcastPromises: Promise<string>[] = userIds.map(async userId => {
         try {
-          const userMeta = await this.__getUserMeta(userId);
+          const userMeta = await this.__metadata.getUserMeta(userId);
           if (! userMeta) throw new Error('user metadata not registered'); // this means user is no longer authenticated
   
-          this.__io.to(userId).emit('msg', msg);
+          this.__io.to(userId).emit('room:msg', msg);
 
           return userId;
         } catch(err) {
@@ -188,15 +256,15 @@ export class BroadcastProvider {
 
   private async __leaveRoom({ userId, roomId }: { userId: string, roomId: string }): Promise<boolean> { // remove a socket from a room
     try {
-      const roomMeta: RoomMetadata = await this.__getRoomMeta(roomId);
+      const roomMeta: RoomMetadata = await this.__metadata.getRoomMeta(roomId);
       const socketIdIndex = roomMeta.userIds.findIndex(uid => uid === userId);
       
       if (socketIdIndex === -1 || roomMeta.userIds.length <= 1) {
-        await this.__memcache.hdel(roomId); 
+        await this.__metadata.delRoomMeta(roomId); 
         this.__zLog.debug(`room ${roomId} is empty, removing from registry`);
       } else {
         const updatedSocketIds = [ ...roomMeta.userIds.slice(0, socketIdIndex), ...roomMeta.userIds.slice(socketIdIndex + 1) ];
-        await this.__memcache.hset({ key: roomId, value: { ...roomMeta, userIds: updatedSocketIds }});
+        await this.__metadata.setRoomMeta({ roomId, ...roomMeta, userIds: updatedSocketIds });
         this.__zLog.debug(`${userId} left room --> ${roomId}`);
       }
 
@@ -207,48 +275,20 @@ export class BroadcastProvider {
     }
   }
 
-  private async __validatePublisher(roomMeta: RoomMetadata, socket: BroadcastSocket): Promise<boolean> {
+  private async __validatePublisher(roomMeta: RoomMetadata, user: BroadcastSocket['user']): Promise<boolean> {
     try {
       if (! roomMeta) throw new Error('cannot publish to non-existent room');
-      if (! ACLMiddleware.isEligible({ incoming: socket.user.role, expected: roomMeta.roomRole })) throw new Error('higher privileges needed to publish to room');
-      if (roomMeta.roomType === 'org' && socket.user.orgId !== roomMeta.orgId) throw new Error('publisher not verified on room');
+      if (! ACLMiddleware.isEligible({ incoming: user.role, expected: roomMeta.roomRole })) throw new Error('higher privileges needed to publish to room');
+      if (roomMeta.roomType === 'org' && user.orgId !== roomMeta.orgId) throw new Error('publisher not verified on room');
 
-      const userMeta = await this.__getUserMeta(socket.user.userId);
-      if (! userMeta) {
-        socket.disconnect();
-        throw new Error('user metadata does not exist for socket user, reconnect');
-      }
+      const userMeta = await this.__metadata.getRoomMeta(user.userId);
+      if (! userMeta) throw new Error('user metadata does not exist for socket user, reconnect');
 
       return true;
     } catch(err) {
       this.__zLog.error(`message validation err: ${NodeUtil.extractErrorMessage(err)}`);
       return false;
     }
-  }
-
-  private async __getRoomMeta(roomId: string): Promise<RoomMetadata> {
-    return this.__memcache.hgetall(roomId);
-  }
-
-  private async __setRoomMeta({ roomId, orgId, roomRole, roomType, userIds }: { roomId: string } & RoomMetadata) {
-    const value = await (async (): Promise<RoomMetadata> => {
-      const roomMeta = await this.__getRoomMeta(roomId);
-      if (! roomMeta) return { roomRole, orgId, roomType, userIds };
-      
-      const userSet = new Set([ ...userIds, ...roomMeta.userIds  ])
-      return { ...roomMeta, userIds: [ ...userSet  ] }
-    })();
-
-    await this.__memcache.hset({ key: roomId, value });
-    return true;
-  }
-
-  private async __getUserMeta(userId: string): Promise<Pick<IUser, 'userId' | 'displayName' | 'orgId' | 'role'>> {
-    return this.__memcache.hgetall(userId);
-  }
-
-  private async __setUserMeta(socket: BroadcastSocket): Promise<boolean> {
-    return this.__memcache.hset({ key: socket.user.userId, value: socket.user, expirationInSec: socket.exp }); // this is set to expire, use this to expire user auth so once logged in user is not always logged in
   }
 }
 
