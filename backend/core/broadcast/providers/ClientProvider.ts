@@ -1,10 +1,9 @@
 import { io, Socket } from 'socket.io-client/debug';
 import { EventEmitter } from 'events';
 
-import { LogProvider } from '../../core/log/LogProvider.js';
-import { NodeUtil } from '../../core/utils/Node.js';
-import { BackoffUtil } from '../../core/utils/Backoff.js';
-import { envLoader } from '../../common/EnvLoader.js';
+import { LogProvider } from '../../log/LogProvider.js';
+import { NodeUtil } from '../../utils/Node.js';
+import { envLoader } from '../../../common/EnvLoader.js';
 import { ClientOpts, Protocol, SocketEndpoint } from '../types/Client.js';
 import { BroadcastRoomMessage, ServerClientEvents, ClientServerEvents, AcknowledgeFn } from '../types/Broadcast.js';
 
@@ -25,32 +24,34 @@ export class ClientProvider extends EventEmitter {
   get endpoint() { return this.__endpoint; }
   get socket() { return this.__socket; }
 
-  ready(listener: (ready: boolean) => void) {
-    const event: keyof ServerClientEvents = 'welcome';
-    return super.on(event, listener);
+  ready(listener: () => void) {
+    return super.on('welcome', listener);
   }
 
-  join(listenOpts: Pick<BroadcastRoomMessage, 'roomId' | 'roomType' | 'role' | 'orgId'>) {
-    const connectOpts: BroadcastRoomMessage = { ...listenOpts, payload: null };
-    this.zLog.info(`attempt room join with: ${JSON.stringify(connectOpts, null, 2)}`);
-    
-    this.__socket.emit('join_room', connectOpts);
-    this.__roomMap.set(connectOpts.roomId, connectOpts);
+  join(listenOpts: Pick<BroadcastRoomMessage, 'roomId' | 'roomType' | 'role' | 'orgId'>, listener: (roomId: string) => void) {
+    const data: BroadcastRoomMessage = { ...listenOpts, payload: null };
+    this.zLog.info(`attempt room join with: ${JSON.stringify(data, null, 2)}`);
+
+    this.__roomMap.set(listenOpts.roomId, data);
+    const joined = super.on('joined', listener)
+    this.socket.emit('join', data);
+    return joined;
   }
 
   leave(opts: Pick<BroadcastRoomMessage, 'roomId'>) {
-    this.__socket.emit('leave_room', opts);
+    this.__socket.emit('leave', opts as BroadcastRoomMessage);
   }
 
   pub<T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) {
-    this.__socket.emit('pub_room', msg, ackMsg => {
-      this.zLog.debug(`published message acknowledged: ${ackMsg}`);
-    });
+    this.__socket.emit('publish', msg as BroadcastRoomMessage);
   }
 
-  sub(listener: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>, ack: AcknowledgeFn) => void) {
-    const event: keyof ServerClientEvents = 'sub_room';
-    return super.on(event, listener);
+  msg(listener: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>, ack: AcknowledgeFn) => void) {
+    return super.on('msg', listener);
+  }
+
+  err(listener: (err: string) => void) {
+    return super.on('error', listener);
   }
 
   close() {
@@ -62,7 +63,7 @@ export class ClientProvider extends EventEmitter {
 
     this.__socket = io('https://battle-station-0', {
       path: '/socket.io/',
-      transports: [ 'polling', 'websocket' ],
+      transports: [ 'websocket' ],
       upgrade: true,
       secure: true,
       rejectUnauthorized: false,
@@ -76,16 +77,20 @@ export class ClientProvider extends EventEmitter {
 
     this.__socket.on('connect', () => {
       this.zLog.info(`connection to ${this.__endpoint} made successfully`);
+      super.emit('connect');
     });
 
-    this.__socket.on('welcome', () => {
-      this.zLog.info('server acknowledged socket, ready');
-      super.emit('welcome');
-    });
-
-    this.__socket.on('sub_room', (msg, ack) => {
-      super.emit('sub_room', msg, ack);
+    this.__socket.on('joined', roomId => {
+      super.emit('joined', roomId);
     })
+
+    this.__socket.on('left', roomId => {
+      super.emit('left', roomId);
+    })
+
+    this.__socket.on('msg', msg => {
+      super.emit('msg', msg);
+    });
 
     this.__socket.on('connect_error', err => {
       if (! this.__socket.active) this.zLog.error(`socket err: ${NodeUtil.extractErrorMessage(err)}`);
@@ -98,13 +103,12 @@ export class ClientProvider extends EventEmitter {
       if (this.__keepAlive) this.__socket.connect()
     });
 
-    this.__socket.on('err_room', (err: string) => {
+    this.__socket.on('err', (err: string) => {
       this.zLog.error(`room err: ${err}`);
     });
 
-    this.__socket.on('refresh_token', (token: string, ack: AcknowledgeFn) => {
+    this.__socket.on('refresh', (token: string) => {
       this.opts.token = token;
-      ack(token);
     });
 
     this.__socket.io.on('reconnect_attempt', async attempt => {
@@ -132,3 +136,24 @@ export class ClientProvider extends EventEmitter {
     ].filter(el => el).join('') as SocketEndpoint<Protocol>;
   }
 }
+
+
+const emitWithTimeout = async (
+  socket: Socket<ServerClientEvents, ClientServerEvents>,
+  opts: { event: keyof ClientServerEvents, data: BroadcastRoomMessage, timeout?: number }
+) => {
+  return new Promise<string>((resolve, reject) => {
+    const timer = (() => {
+      if (! opts.timeout) return null;
+
+      return setTimeout(() => {
+      reject(new Error('acknowledgement timeout'));
+    }, opts.timeout);
+    })();
+
+    socket.emit(opts.event, opts.data);
+  }).catch(e => {
+    console.log('emit with timeout err', NodeUtil.extractErrorMessage(e));
+    throw e;
+  });
+};

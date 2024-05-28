@@ -4,8 +4,8 @@ import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 import { ApplicableSystem } from '../ServerConfigurations.js';
 import { Server } from '../server/Server.js';
 import { ServerConfiguration } from '../server/types/ServerConfiguration.js';
+import { BroadcastProvider } from '../core/broadcast/providers/BroadcastProvider.js';
 import { envLoader } from '../common/EnvLoader.js';
-import { BroadcastProvider } from './providers/BroadcastProvider.js';
 
 
 export class BroadcastServer extends Server<ApplicableSystem> {

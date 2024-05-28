@@ -1,11 +1,9 @@
-import { hostname } from 'os';
-
+import { ClientProvider } from '../core/broadcast/providers/ClientProvider.js';
 import { LogProvider } from '../core/log/LogProvider.js';
 import { RedisProvider } from '../core/data/providers/RedisProvider.js';
 import { DEFAULT_CLUSTER_OPTIONS } from '../core/data/types/Redis.js';
 import { Connection } from '../common/Connection.js';
 import { Profile } from '../common/Profile.js';
-import { ClientProvider } from '../broadcast/providers/ClientProvider.js';
 
 
 export class SightIOConnection {

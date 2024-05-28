@@ -2,12 +2,11 @@ import { JWTMiddleware } from '../../core/middleware/JWTMiddleware.js';
 import { NodeUtil } from '../../core/utils/Node.js';
 import { envLoader } from '../../common/EnvLoader.js';
 import { SightMongoProvider } from '../../db/SightProvider.js';
-import { RoomType } from '../../broadcast/types/Broadcast.js';
+import { RoomType } from '../../core/broadcast/types/Broadcast.js';
 import { AuthProvider } from '../../gateway/providers/AuthProvider.js'
 import { SightIOConnection } from '../../io/sight.io.connect.js';
 import { SightIORunner } from '../../io/sight.io.runner.js';
 import { AuthIOData } from '../../io/data/auth.sight.io.data.js';
-import { RoomIOData } from '../../io/data/room.sight.io.data.js';
 import { UserRole } from 'db/models/ACL.js';
 
 
@@ -36,6 +35,7 @@ class SubIORunner extends SightIORunner<boolean> {
     for (const user of users) {
       await sightDb.user.findOneAndDelete({ email: user.email });
       await new AuthProvider(sightDb).register(user);
+      await sightDb.user.findOneAndUpdate({ email: user.email }, { $set: { role: user.role, orgId: user.orgId }});
     }
   }
 
@@ -51,29 +51,29 @@ class SubIORunner extends SightIORunner<boolean> {
       if (! mockUsers) throw new Error('no mock users available');
 
       const rooms: { roomId: string, orgId: string, role: UserRole, roomType: RoomType }[] = [
-        { roomId: '5d214fc5-f36c-4fbf-bd96-c9d12878b1c6', orgId: mockUsers[0].orgId, role: mockUsers[0].role, roomType: 'org' },
-        { roomId: '8759c7b6-449b-42be-95d6-477b89a2c452', orgId: mockUsers[1].orgId, role: mockUsers[1].role, roomType: 'org' },
-        { roomId: 'f117fd99-d8bd-4c00-babd-f64ed8a35009', orgId: mockUsers[2].orgId, role: mockUsers[1].role, roomType: 'org' },
-        { roomId: '8885a0d2-47e0-4601-8169-35cb143cf9f7', orgId: mockUsers[0].orgId, role: mockUsers[0].role, roomType: 'user' }
+        { roomId: 'c50dd2a4-f5ad-4cde-b6f1-cb22c67797e4', orgId: mockUsers[0].orgId, role: 'ANALYST', roomType: 'org' },
+        { roomId: '72656098-4204-4cb1-be8d-1d1010e0f8ba', orgId: mockUsers[0].orgId, role: 'ARCHITECT', roomType: 'org' },
+        { roomId: 'ad48917f-985d-4282-87cb-a7f78a3154f7', orgId: mockUsers[3].orgId, role: 'ADMIN', roomType: 'org' },
+        { roomId: '9be6757a-23f0-40ae-9611-ea3582eddf6d', orgId: mockUsers[0].orgId, role: 'ANALYST', roomType: 'user' }
       ];
 
-      const token = await jwtMiddleware.sign(mockUsers[0].userId);
+      const subber = mockUsers.find(u => u.email === users[2].email);
+      const token = await jwtMiddleware.sign(subber.userId);
       const subscriber = SightIOConnection.broadcast(token);
-
-      subscriber.ready(() => {
-        this.zLog.debug('ready');
-
-        subscriber.sub((msg, ack) => {
-          this.zLog.debug(`msg received: ${msg}`);
-          ack('ok');
-        });
-
-        for (const room of rooms) { 
-          subscriber.join(room);
-        };
+      
+      subscriber.msg(msg => {
+        this.zLog.debug(`msg: ${JSON.stringify(msg, null, 2)}`);
       });
 
-      subscriber.on('error', err => {
+      subscriber.ready(() => {
+        for (const room of rooms) { 
+          subscriber.join(room, roomId => { 
+            this.zLog.debug(`joined room: ${roomId}`);
+          });
+        }
+      });
+
+      subscriber.err(err => {
         this.zLog.error(`subscriber err: ${err}`);
       });
     } catch (err) {

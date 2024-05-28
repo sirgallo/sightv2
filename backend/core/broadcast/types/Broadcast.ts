@@ -1,8 +1,8 @@
 import { ClusterNode, ClusterOptions, RedisOptions } from 'ioredis';
 import { Socket } from 'socket.io';
 
-import { IUser } from '../../db/models/User.js';
-import { UserRole } from '../../db/models/ACL.js';
+import { IUser } from '../../../db/models/User.js';
+import { UserRole } from '../../../db/models/ACL.js';
 
 
 export interface BroadcastOpts {
@@ -21,18 +21,21 @@ export type BroadcastRoomMessage<T = unknown> = {
 };
 
 
-export type AcknowledgeFn = (ackMsg: string) => void;
+export type AcknowledgeFn = (ackMsg: string) => Promise<void>;
 export interface ServerClientEvents {
   welcome: () => void;
-  refresh_token: (newToken: string, ack: AcknowledgeFn) => void
-  sub_room: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>, ack: AcknowledgeFn) => void;
-  err_room: (err: string) => void;
+  joined: (roomId: string) => void;
+  left: (roomId: string) => void;
+  published: () => void;
+  msg: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) => void;
+  refresh: (token: string) => void;
+  err: (err: string) => void;
 }
 
 export interface ClientServerEvents {
-  join_room: (msg: Pick<BroadcastRoomMessage, 'roomId' | 'orgId' | 'role' | 'roomType'>) => void;
-  pub_room: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>, ack: AcknowledgeFn) => void;
-  leave_room: (msg: Pick<BroadcastRoomMessage, 'roomId'>) => void;
+  join: (msg: Pick<BroadcastRoomMessage, 'roomId' | 'orgId' | 'role' | 'roomType'>) => void;
+  leave: (msg: Pick<BroadcastRoomMessage, 'roomId'>) => void;
+  publish: <T>(msg: Pick<BroadcastRoomMessage<T>, 'roomId' | 'payload'>) => void;
 }
 
 export interface ServerServerEvents {

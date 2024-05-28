@@ -2,7 +2,7 @@ import lodash from 'lodash';
 const { transform } = lodash;
 
 import { CryptoUtil } from '../../core/utils/Crypto.js';
-import { RoomType } from '../../broadcast/types/Broadcast.js';
+import { RoomType } from '../../core/broadcast/types/Broadcast.js';
 
 
 
